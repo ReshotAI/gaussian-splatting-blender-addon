@@ -9,6 +9,7 @@ bl_info = {
 
 import bpy
 import numpy as np
+import time
 
 from .plyfile import PlyData, PlyElement
 
@@ -54,10 +55,36 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         
         opacities = np.asarray(plydata.elements[0]["opacity"])[..., np.newaxis]
 
-        for i in range(1000):
+        start_time = time.time()
+
+        # Create a new uv sphere called "Ellipsoid"
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.01, location=(0, 0, 0))
+        bpy.context.active_object.name = "Ellipsoid"
+
+
+        N = len(xyz)
+
+        for i in range(N):
             x, y, z = xyz[i]
 
-            bpy.ops.mesh.primitive_uv_sphere_add(radius=0.01, location=(x, y, z))
+            # bpy.ops.mesh.primitive_uv_sphere_add(radius=0.01, location=(x, y, z))
+            # bpy.ops.surface.primitive_nurbs_surface_sphere_add(radius=0.01, location=(x, y, z))
+
+            new_ellipsoid = bpy.data.objects["Ellipsoid"].copy()
+            new_ellipsoid.location = (x, y, z)
+            # new_ellipsoid.rotation_euler = (rot_x, rot_y, rot_z)
+            # new_ellipsoid.scale = (scale_x, scale_y, scale_z)
+
+            # Link the new ellipsoid to the scene
+            bpy.context.collection.objects.link(new_ellipsoid)
+
+            # # Set the material color
+            # mat = bpy.data.materials.new(name="Material" + str(row))
+            # mat.diffuse_color = (color_r, color_g, color_b, 1)  # The last value is alpha
+            # new_ellipsoid.data.materials.append(mat)
+
+
+        print("Processing time: ", time.time() - start_time)
 
         return {'FINISHED'}
 
