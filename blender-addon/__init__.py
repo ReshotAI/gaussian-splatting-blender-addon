@@ -113,31 +113,36 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         min_coords = xyz.min(axis=0)
         max_coords = xyz.max(axis=0)
 
-        bpy.ops.mesh.primitive_cube_add(size=1, location=((min_coords + max_coords) / 2).tolist())
-        cube = bpy.context.object
-        cube.dimensions = (max_coords - min_coords).tolist()
+        mesh = bpy.data.meshes.new(name="EmitterMesh")
+        mesh.from_pydata(xyz.tolist(), [], [])
 
-        particle_sys = cube.modifiers.new(name="ParticleSys", type='PARTICLE_SYSTEM')
+        obj = bpy.data.objects.new("EmitterObject", mesh)
+        bpy.context.collection.objects.link(obj)
+
+        particle_sys = obj.modifiers.new(name="ParticleSys", type='PARTICLE_SYSTEM')
         particle_settings = particle_sys.particle_system.settings
         particle_settings.count = len(xyz)
 
         particle_settings.frame_start = 1
         particle_settings.frame_end = 1
         particle_settings.physics_type = 'NO'
-
-        particle_settings.emit_from = 'VOLUME'
+        particle_settings.emit_from = 'VERT'
+        particle_settings.use_emit_random = False
 
         particle_settings.render_type = 'OBJECT'
         particle_settings.instance_object = icosphere
         particle_settings.particle_size = 0.01
         
-        cube.show_instancer_for_viewport = False
-        cube.show_instancer_for_render = False
+        obj.show_instancer_for_viewport = False
+        obj.show_instancer_for_render = False
 
         bpy.context.view_layer.update()
 
-        for i, particle in enumerate(particle_sys.particle_system.particles):
-            particle.location = xyz[i]
+        # for i, particle in enumerate(particle_sys.particle_system.particles):
+        #     particle.location = xyz[i]
+
+        for particle in particle_sys.particle_system.particles:
+            particle.size = np.random.uniform(0.1, 2)
 
         bpy.context.view_layer.update()
 
