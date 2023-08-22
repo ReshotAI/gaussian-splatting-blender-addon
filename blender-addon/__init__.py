@@ -57,8 +57,9 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         start_time = time.time()
 
-        # Create a new uv sphere called "Ellipsoid"
-        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.01, location=(0, 0, 0))
+        # Create a new uv sphere / ellipsoid called "Ellipsoid"
+        # bpy.ops.mesh.primitive_uv_sphere_add(radius=0.01, location=(0, 0, 0))
+        bpy.ops.surface.primitive_nurbs_surface_sphere_add(radius=0.01, location=(0, 0, 0))
         bpy.context.active_object.name = "Ellipsoid"
 
 
