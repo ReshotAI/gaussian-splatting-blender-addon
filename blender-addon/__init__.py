@@ -76,43 +76,48 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         geo_tree = bpy.data.node_groups.new(name="GaussianSplatting", type='GeometryNodeTree')
         geo_node_mod.node_group = geo_tree
 
-        # Clear default nodes
         for node in geo_tree.nodes:
             geo_tree.nodes.remove(node)
+        
+        geo_tree.inputs.new('NodeSocketGeometry', "Geometry")
+        geo_tree.outputs.new('NodeSocketGeometry', "Geometry")
 
-        # Add a Group Input node
         group_input_node = geo_tree.nodes.new('NodeGroupInput')
         group_input_node.location = (0, 0)
 
-        # Add MeshToPoints node
         mesh_to_points_node = geo_tree.nodes.new('GeometryNodeMeshToPoints')
         mesh_to_points_node.location = (200, 0)
 
-        # Add Icosphere node
         ico_node = geo_tree.nodes.new('GeometryNodeMeshIcoSphere')
         ico_node.location = (200, 200)
         ico_node.inputs["Subdivisions"].default_value = 1
         ico_node.inputs["Radius"].default_value = 0.01
 
-        # Add InstanceOnPoints node
         instance_node = geo_tree.nodes.new('GeometryNodeInstanceOnPoints')
         instance_node.location = (400, 0)
 
-        # Connect MeshToPoints to InstanceOnPoints
-        # geo_tree.links.new(
-        #     mesh_to_points_node.outputs["Geometry"],
-        #     instance_node.inputs["Geometry"]
-        # )
-
-        # Add a Group Output node
         group_output_node = geo_tree.nodes.new('NodeGroupOutput')
         group_output_node.location = (600, 0)
 
-        # Connect InstanceOnPoints to Group Output
-        # geo_tree.links.new(
-        #     instance_node.outputs["Geometry"],
-        #     group_output_node.inputs["Geometry"]
-        # )
+        geo_tree.links.new(
+            group_input_node.outputs["Geometry"],
+            mesh_to_points_node.inputs["Mesh"]
+        )
+
+        geo_tree.links.new(
+            ico_node.outputs["Mesh"],
+            instance_node.inputs["Instance"]
+        )
+
+        geo_tree.links.new(
+            mesh_to_points_node.outputs["Mesh"],
+            instance_node.inputs["Points"]
+        )
+
+        geo_tree.links.new(
+            instance_node.outputs["Instances"],
+            group_output_node.inputs["Geometry"]
+        )
 
         print("Processing time: ", time.time() - start_time)
 
