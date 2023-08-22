@@ -58,10 +58,6 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         start_time = time.time()
 
-        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=1, location=(0, 0, 0))
-        ellipsoid = bpy.context.object
-        ellipsoid.name = "Ellipsoid"
-
         N = len(xyz)
 
         mesh = bpy.data.meshes.new(name="Mesh")
@@ -74,6 +70,49 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         obj = bpy.data.objects.new("GaussianSplatting", mesh)
         bpy.context.collection.objects.link(obj)
+
+        geo_node_mod = obj.modifiers.new(name="GeometryNodes", type='NODES')
+
+        geo_tree = bpy.data.node_groups.new(name="GaussianSplatting", type='GeometryNodeTree')
+        geo_node_mod.node_group = geo_tree
+
+        # Clear default nodes
+        for node in geo_tree.nodes:
+            geo_tree.nodes.remove(node)
+
+        # Add a Group Input node
+        group_input_node = geo_tree.nodes.new('NodeGroupInput')
+        group_input_node.location = (0, 0)
+
+        # Add MeshToPoints node
+        mesh_to_points_node = geo_tree.nodes.new('GeometryNodeMeshToPoints')
+        mesh_to_points_node.location = (100, 0)
+
+        # Add Icosphere node
+        ico_node = geo_tree.nodes.new('GeometryNodeMeshIcoSphere')
+        ico_node.location = (100, 100)
+        ico_node.inputs["Subdivisions"].default_value = 1
+        ico_node.inputs["Radius"].default_value = 0.01
+
+        # Add InstanceOnPoints node
+        instance_node = geo_tree.nodes.new('GeometryNodeInstanceOnPoints')
+        instance_node.location = (200, 0)
+
+        # Connect MeshToPoints to InstanceOnPoints
+        # geo_tree.links.new(
+        #     mesh_to_points_node.outputs["Geometry"],
+        #     instance_node.inputs["Geometry"]
+        # )
+
+        # Add a Group Output node
+        group_output_node = geo_tree.nodes.new('NodeGroupOutput')
+        group_output_node.location = (300, 0)
+
+        # Connect InstanceOnPoints to Group Output
+        # geo_tree.links.new(
+        #     instance_node.outputs["Geometry"],
+        #     group_output_node.inputs["Geometry"]
+        # )
 
         print("Processing time: ", time.time() - start_time)
 
