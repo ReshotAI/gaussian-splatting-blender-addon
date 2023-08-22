@@ -91,6 +91,9 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         obj = bpy.data.objects.new("GaussianSplatting", mesh)
         bpy.context.collection.objects.link(obj)
 
+        bpy.context.view_layer.objects.active = obj
+        obj.select_set(True)
+
         geo_node_mod = obj.modifiers.new(name="GeometryNodes", type='NODES')
 
         geo_tree = bpy.data.node_groups.new(name="GaussianSplatting", type='GeometryNodeTree')
@@ -166,8 +169,8 @@ class GaussianSplattingPanel(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
 
-    bl_category = "Gaussian Splatting 123"
-    bl_label = "Gaussian Splatting 123"
+    bl_category = "Gaussian Splatting"
+    bl_label = "Gaussian Splatting"
 
     def draw(self, context):
         layout = self.layout
