@@ -86,17 +86,17 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         # Add MeshToPoints node
         mesh_to_points_node = geo_tree.nodes.new('GeometryNodeMeshToPoints')
-        mesh_to_points_node.location = (100, 0)
+        mesh_to_points_node.location = (200, 0)
 
         # Add Icosphere node
         ico_node = geo_tree.nodes.new('GeometryNodeMeshIcoSphere')
-        ico_node.location = (100, 100)
+        ico_node.location = (200, 200)
         ico_node.inputs["Subdivisions"].default_value = 1
         ico_node.inputs["Radius"].default_value = 0.01
 
         # Add InstanceOnPoints node
         instance_node = geo_tree.nodes.new('GeometryNodeInstanceOnPoints')
-        instance_node.location = (200, 0)
+        instance_node.location = (400, 0)
 
         # Connect MeshToPoints to InstanceOnPoints
         # geo_tree.links.new(
@@ -106,7 +106,7 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         # Add a Group Output node
         group_output_node = geo_tree.nodes.new('NodeGroupOutput')
-        group_output_node.location = (300, 0)
+        group_output_node.location = (600, 0)
 
         # Connect InstanceOnPoints to Group Output
         # geo_tree.links.new(
