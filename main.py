@@ -22,6 +22,28 @@ class OBJECT_OT_AddTenCircles(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
+    bl_idname = "object.import_gaussian_splatting"
+    bl_label = "Import Gaussian Splatting"
+    bl_description = "Import a Gaussian Splatting file into the scene"
+    bl_options = {"REGISTER", "UNDO"}
+    
+    filepath: bpy.props.StringProperty(
+        name="File Path",
+        description="Path to the Gaussian Splatting file",
+        default="",
+        maxlen=1024,
+        subtype='FILE_PATH',
+    )
+
+    def execute(self, context):
+        if not self.filepath:
+            self.report({'WARNING'}, "Filepath is not set!")
+            return {'CANCELLED'}
+        
+        bpy.ops.import_mesh.ply(filepath=self.filepath)  # Use Blender's built-in ply importer
+        return {'FINISHED'}
+
 class GaussianSplattingPanel(bpy.types.Panel):
     
     bl_space_type = "VIEW_3D"
@@ -31,18 +53,29 @@ class GaussianSplattingPanel(bpy.types.Panel):
     bl_label = "Gaussian Splatting"
 
     def draw(self, context):
-        row = self.layout.row()
+        layout = self.layout
 
-        row.operator(OBJECT_OT_AddTenCircles.bl_idname, text="Add 10 Circles")
+        # Filepath input
+        layout.prop(context.scene, "ply_file_path", text="PLY Filepath")
+        
+        # Import PLY button
+        row = layout.row()
+        row.operator(OBJECT_OT_ImportGaussianSplatting.bl_idname, text="Import Gaussian Splatting").filepath = context.scene.ply_file_path
 
 
 def register():
+    bpy.utils.register_class(OBJECT_OT_ImportGaussianSplatting)
     bpy.utils.register_class(GaussianSplattingPanel)
     bpy.utils.register_class(OBJECT_OT_AddTenCircles)
 
+    bpy.types.Scene.ply_file_path = bpy.props.StringProperty(name="PLY Filepath", subtype='FILE_PATH')
+
 def unregister():
+    bpy.utils.unregister_class(OBJECT_OT_ImportGaussianSplatting)
     bpy.utils.unregister_class(GaussianSplattingPanel)
     bpy.utils.unregister_class(OBJECT_OT_AddTenCircles)
+
+    del bpy.types.Scene.ply_file_path
 
 if __name__ == "__main__":
     register()
