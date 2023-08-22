@@ -65,24 +65,33 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         N = len(xyz)
 
-        for i in range(N):
-            x, y, z = xyz[i]
+        # for i in range(N):
+        #     x, y, z = xyz[i]
 
-            # bpy.ops.mesh.primitive_uv_sphere_add(radius=0.01, location=(x, y, z))
-            # bpy.ops.surface.primitive_nurbs_surface_sphere_add(radius=0.01, location=(x, y, z))
+        #     # bpy.ops.mesh.primitive_uv_sphere_add(radius=0.01, location=(x, y, z))
+        #     # bpy.ops.surface.primitive_nurbs_surface_sphere_add(radius=0.01, location=(x, y, z))
 
-            new_ellipsoid = bpy.data.objects["Ellipsoid"].copy()
-            new_ellipsoid.location = (x, y, z)
-            # new_ellipsoid.rotation_euler = (rot_x, rot_y, rot_z)
-            # new_ellipsoid.scale = (scale_x, scale_y, scale_z)
+        #     new_ellipsoid = bpy.data.objects["Ellipsoid"].copy()
+        #     new_ellipsoid.location = (x, y, z)
+        #     # new_ellipsoid.rotation_euler = (rot_x, rot_y, rot_z)
+        #     # new_ellipsoid.scale = (scale_x, scale_y, scale_z)
 
-            # Link the new ellipsoid to the scene
-            bpy.context.collection.objects.link(new_ellipsoid)
+        #     # Link the new ellipsoid to the scene
+        #     bpy.context.collection.objects.link(new_ellipsoid)
 
-            # # Set the material color
-            # mat = bpy.data.materials.new(name="Material" + str(row))
-            # mat.diffuse_color = (color_r, color_g, color_b, 1)  # The last value is alpha
-            # new_ellipsoid.data.materials.append(mat)
+        #     # # Set the material color
+        #     # mat = bpy.data.materials.new(name="Material" + str(row))
+        #     # mat.diffuse_color = (color_r, color_g, color_b, 1)  # The last value is alpha
+        #     # new_ellipsoid.data.materials.append(mat)
+
+        # Display everything in a point cloud instead
+        # Create a new mesh called "PointCloud"
+        mesh = bpy.data.meshes.new("PointCloud")
+        mesh.from_pydata(xyz, [], [])
+        mesh.update()
+        
+        obj = bpy.data.objects.new("PointCloud", mesh)
+        bpy.context.collection.objects.link(obj)
 
 
         print("Processing time: ", time.time() - start_time)
