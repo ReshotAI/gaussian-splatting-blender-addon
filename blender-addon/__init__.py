@@ -58,94 +58,22 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         start_time = time.time()
 
-        # Create a new uv sphere / ellipsoid called "Ellipsoid"
-        # bpy.ops.mesh.primitive_uv_sphere_add(radius=0.01, location=(0, 0, 0))
-        # bpy.ops.surface.primitive_nurbs_surface_sphere_add(radius=0.01, location=(0, 0, 0))
-        # bpy.context.active_object.name = "Ellipsoid"
-
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=1, location=(0, 0, 0))
+        ellipsoid = bpy.context.object
+        ellipsoid.name = "Ellipsoid"
 
         N = len(xyz)
 
-        # for i in range(N):
-        #     x, y, z = xyz[i]
-
-        #     # bpy.ops.mesh.primitive_uv_sphere_add(radius=0.01, location=(x, y, z))
-        #     # bpy.ops.surface.primitive_nurbs_surface_sphere_add(radius=0.01, location=(x, y, z))
-
-        #     new_ellipsoid = bpy.data.objects["Ellipsoid"].copy()
-        #     new_ellipsoid.location = (x, y, z)
-        #     # new_ellipsoid.rotation_euler = (rot_x, rot_y, rot_z)
-        #     # new_ellipsoid.scale = (scale_x, scale_y, scale_z)
-
-        #     # Link the new ellipsoid to the scene
-        #     bpy.context.collection.objects.link(new_ellipsoid)
-
-        #     # # Set the material color
-        #     # mat = bpy.data.materials.new(name="Material" + str(row))
-        #     # mat.diffuse_color = (color_r, color_g, color_b, 1)  # The last value is alpha
-        #     # new_ellipsoid.data.materials.append(mat)
-
-        # Display everything in a point cloud instead
-        # Create a new mesh called "PointCloud"
-
-        # use a random radius between 0.01 and 0.025
-
-        # # Create a new mesh called "PointCloud"
-        # mesh = bpy.data.meshes.new("PointCloud")
-        # mesh.from_pydata(xyz, [], [])
-        # mesh.update()
-
-        # count = len(xyz)
-
-        # pc = bpy.data.pointclouds.new("PointCloud", count)
-
-        # for i, point in enumerate(pc.points):
-        #     point.co = xyz[i]
-        #     point.radius = random.uniform(0.01, 0.025)
-
-        # obj = bpy.data.objects.new("PointCloud", pc)
-        # bpy.context.collection.objects.link(obj)
-        
-
-        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=1, location=(0, 0, 0))
-        icosphere = bpy.context.object
-
-        min_coords = xyz.min(axis=0)
-        max_coords = xyz.max(axis=0)
-
-        mesh = bpy.data.meshes.new(name="EmitterMesh")
+        mesh = bpy.data.meshes.new(name="Mesh")
         mesh.from_pydata(xyz.tolist(), [], [])
+        mesh.update()
 
-        obj = bpy.data.objects.new("EmitterObject", mesh)
+        attr = mesh.attributes.new(name="opacity", type='FLOAT', domain='POINT')
+        for i, v in enumerate(mesh.vertices):
+            attr.data[i].value = opacities[i]
+
+        obj = bpy.data.objects.new("GaussianSplatting", mesh)
         bpy.context.collection.objects.link(obj)
-
-        particle_sys = obj.modifiers.new(name="ParticleSys", type='PARTICLE_SYSTEM')
-        particle_settings = particle_sys.particle_system.settings
-        particle_settings.count = len(xyz)
-
-        particle_settings.frame_start = 1
-        particle_settings.frame_end = 1
-        particle_settings.physics_type = 'NO'
-        particle_settings.emit_from = 'VERT'
-        particle_settings.use_emit_random = False
-
-        particle_settings.render_type = 'OBJECT'
-        particle_settings.instance_object = icosphere
-        particle_settings.particle_size = 0.01
-        
-        obj.show_instancer_for_viewport = False
-        obj.show_instancer_for_render = False
-
-        bpy.context.view_layer.update()
-
-        # for i, particle in enumerate(particle_sys.particle_system.particles):
-        #     particle.location = xyz[i]
-
-        for particle in particle_sys.particle_system.particles:
-            particle.size = np.random.uniform(0.1, 2)
-
-        bpy.context.view_layer.update()
-
 
         print("Processing time: ", time.time() - start_time)
 
