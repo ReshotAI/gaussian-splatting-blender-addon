@@ -8,6 +8,9 @@ bl_info = {
 }
 
 import bpy
+import numpy as np
+
+from .plyfile import PlyData, PlyElement
 
 
 class OBJECT_OT_AddTenCircles(bpy.types.Operator):
@@ -41,7 +44,21 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
             self.report({'WARNING'}, "Filepath is not set!")
             return {'CANCELLED'}
         
-        bpy.ops.import_mesh.ply(filepath=self.filepath)  # Use Blender's built-in ply importer
+        # bpy.ops.import_mesh.ply(filepath=self.filepath)  # Use Blender's built-in ply importer
+
+        plydata = PlyData.read(self.filepath)
+
+        xyz = np.stack((np.asarray(plydata.elements[0]["x"]),
+                        np.asarray(plydata.elements[0]["y"]),
+                        np.asarray(plydata.elements[0]["z"])),  axis=1)
+        
+        opacities = np.asarray(plydata.elements[0]["opacity"])[..., np.newaxis]
+
+        for i in range(1000):
+            x, y, z = xyz[i]
+
+            bpy.ops.mesh.primitive_uv_sphere_add(radius=0.01, location=(x, y, z))
+
         return {'FINISHED'}
 
 class GaussianSplattingPanel(bpy.types.Panel):
@@ -49,8 +66,8 @@ class GaussianSplattingPanel(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
 
-    bl_category = "Gaussian Splatting"
-    bl_label = "Gaussian Splatting"
+    bl_category = "Gaussian Splatting 123"
+    bl_label = "Gaussian Splatting 123"
 
     def draw(self, context):
         layout = self.layout
