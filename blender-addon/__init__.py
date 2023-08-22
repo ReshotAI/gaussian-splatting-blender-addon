@@ -110,7 +110,7 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         )
 
         geo_tree.links.new(
-            mesh_to_points_node.outputs["Mesh"],
+            mesh_to_points_node.outputs["Points"],
             instance_node.inputs["Points"]
         )
 
