@@ -120,14 +120,25 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         particle_sys = cube.modifiers.new(name="ParticleSys", type='PARTICLE_SYSTEM')
         particle_settings = particle_sys.particle_system.settings
         particle_settings.count = len(xyz)
+
+        particle_settings.frame_start = 1
+        particle_settings.frame_end = 1
+        particle_settings.physics_type = 'NO'
+
+        particle_settings.emit_from = 'VOLUME'
+
         particle_settings.render_type = 'OBJECT'
         particle_settings.instance_object = icosphere
+        particle_settings.particle_size = 0.01
+        
+        cube.show_instancer_for_viewport = False
+        cube.show_instancer_for_render = False
 
         bpy.context.view_layer.update()
 
         for i, particle in enumerate(particle_sys.particle_system.particles):
-            particle.location = xyz[i].tolist()
-        
+            particle.location = xyz[i]
+
         bpy.context.view_layer.update()
 
 
