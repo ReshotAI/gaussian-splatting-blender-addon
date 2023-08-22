@@ -10,6 +10,7 @@ bl_info = {
 import bpy
 import numpy as np
 import time
+import random
 
 from .plyfile import PlyData, PlyElement
 
@@ -59,8 +60,8 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         # Create a new uv sphere / ellipsoid called "Ellipsoid"
         # bpy.ops.mesh.primitive_uv_sphere_add(radius=0.01, location=(0, 0, 0))
-        bpy.ops.surface.primitive_nurbs_surface_sphere_add(radius=0.01, location=(0, 0, 0))
-        bpy.context.active_object.name = "Ellipsoid"
+        # bpy.ops.surface.primitive_nurbs_surface_sphere_add(radius=0.01, location=(0, 0, 0))
+        # bpy.context.active_object.name = "Ellipsoid"
 
 
         N = len(xyz)
@@ -86,12 +87,48 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         # Display everything in a point cloud instead
         # Create a new mesh called "PointCloud"
-        mesh = bpy.data.meshes.new("PointCloud")
-        mesh.from_pydata(xyz, [], [])
-        mesh.update()
+
+        # use a random radius between 0.01 and 0.025
+
+        # # Create a new mesh called "PointCloud"
+        # mesh = bpy.data.meshes.new("PointCloud")
+        # mesh.from_pydata(xyz, [], [])
+        # mesh.update()
+
+        # count = len(xyz)
+
+        # pc = bpy.data.pointclouds.new("PointCloud", count)
+
+        # for i, point in enumerate(pc.points):
+        #     point.co = xyz[i]
+        #     point.radius = random.uniform(0.01, 0.025)
+
+        # obj = bpy.data.objects.new("PointCloud", pc)
+        # bpy.context.collection.objects.link(obj)
         
-        obj = bpy.data.objects.new("PointCloud", mesh)
-        bpy.context.collection.objects.link(obj)
+
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=1, location=(0, 0, 0))
+        icosphere = bpy.context.object
+
+        min_coords = xyz.min(axis=0)
+        max_coords = xyz.max(axis=0)
+
+        bpy.ops.mesh.primitive_cube_add(size=1, location=((min_coords + max_coords) / 2).tolist())
+        cube = bpy.context.object
+        cube.dimensions = (max_coords - min_coords).tolist()
+
+        particle_sys = cube.modifiers.new(name="ParticleSys", type='PARTICLE_SYSTEM')
+        particle_settings = particle_sys.particle_system.settings
+        particle_settings.count = len(xyz)
+        particle_settings.render_type = 'OBJECT'
+        particle_settings.instance_object = icosphere
+
+        bpy.context.view_layer.update()
+
+        for i, particle in enumerate(particle_sys.particle_system.particles):
+            particle.location = xyz[i].tolist()
+        
+        bpy.context.view_layer.update()
 
 
         print("Processing time: ", time.time() - start_time)
