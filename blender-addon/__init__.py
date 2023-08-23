@@ -55,7 +55,7 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         ##############################
 
         plydata = PlyData.read(self.filepath)
-        
+
         xyz = np.stack((np.asarray(plydata.elements[0]["z"]),
                         -np.asarray(plydata.elements[0]["x"]),
                         -np.asarray(plydata.elements[0]["y"])),  axis=1)
@@ -66,6 +66,15 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         features_dc[:, 0, 0] = np.asarray(plydata.elements[0]["f_dc_0"])
         features_dc[:, 1, 0] = np.asarray(plydata.elements[0]["f_dc_1"])
         features_dc[:, 2, 0] = np.asarray(plydata.elements[0]["f_dc_2"])
+
+        extra_f_names = [p.name for p in plydata.elements[0].properties if p.name.startswith("f_rest_")]
+        extra_f_names = sorted(extra_f_names, key = lambda x: int(x.split('_')[-1]))
+        
+        features_extra = np.zeros((xyz.shape[0], len(extra_f_names)))
+        for idx, attr_name in enumerate(extra_f_names):
+            features_extra[:, idx] = np.asarray(plydata.elements[0][attr_name])
+        # Reshape (P,F*SH_coeffs) to (P, F, SH_coeffs except DC)
+        features_extra = features_extra.reshape((features_extra.shape[0], 3, 15))
 
         scale_names = [p.name for p in plydata.elements[0].properties if p.name.startswith("scale_")]
         scale_names = sorted(scale_names, key = lambda x: int(x.split('_')[-1]))
@@ -95,9 +104,14 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         for i, v in enumerate(mesh.vertices):
             scale_attr.data[i].vector = scales[i]
         
-        color_attr = mesh.attributes.new(name="color", type='FLOAT_VECTOR', domain='POINT')
+        sh0_attr = mesh.attributes.new(name="sh0", type='FLOAT_VECTOR', domain='POINT')
         for i, v in enumerate(mesh.vertices):
-            color_attr.data[i].vector = features_dc[i]
+            sh0_attr.data[i].vector = features_dc[i]
+        
+        for j in range(0, 15):
+            sh_attr = mesh.attributes.new(name=f"sh{j+1}", type='FLOAT_VECTOR', domain='POINT')
+            for i, v in enumerate(mesh.vertices):
+                sh_attr.data[i].vector = features_extra[i, :, j]
 
         # rot_attr = mesh.attributes.new(name="rotation", type='FLOAT_VECTOR', domain='POINT')
         # for i, v in enumerate(mesh.vertices):
@@ -124,7 +138,7 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         color_attr_node = mat_tree.nodes.new('ShaderNodeAttribute')
         color_attr_node.location = (0, 0)
-        color_attr_node.attribute_name = "color"
+        color_attr_node.attribute_name = "sh0"
         color_attr_node.attribute_type = 'INSTANCER'
 
         opacity_attr_node = mat_tree.nodes.new('ShaderNodeAttribute')
