@@ -50,6 +50,9 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         
         bpy.context.scene.render.engine = 'CYCLES'
 
+        bpy.context.preferences.addons['cycles'].preferences.compute_device_type = 'OPTIX'  # TODO: check if OPTIX is available
+        bpy.context.scene.cycles.device = 'GPU'  # TODO: check if GPU is available
+
         ##############################
         # Load PLY
         ##############################
@@ -689,7 +692,7 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         ico_node = geo_tree.nodes.new('GeometryNodeMeshIcoSphere')
         ico_node.location = (200, 200)
         ico_node.inputs["Subdivisions"].default_value = 3
-        ico_node.inputs["Radius"].default_value = 0.005
+        ico_node.inputs["Radius"].default_value = 1
 
         set_shade_smooth_node = geo_tree.nodes.new('GeometryNodeSetShadeSmooth')
         set_shade_smooth_node.location = (200, 200)
@@ -732,6 +735,17 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         geo_tree.links.new(
             set_material_node.outputs["Geometry"],
             group_output_node.inputs["Geometry"]
+        )
+
+        # named attribute of type vector with name scale
+        scale_attr = geo_tree.nodes.new('GeometryNodeInputNamedAttribute')
+        scale_attr.location = (0, 200)
+        scale_attr.data_type = 'FLOAT_VECTOR'
+        scale_attr.inputs["Name"].default_value = "scale"
+
+        geo_tree.links.new(
+            scale_attr.outputs["Attribute"],
+            instance_node.inputs["Scale"]
         )
 
         print("Processing time: ", time.time() - start_time)
