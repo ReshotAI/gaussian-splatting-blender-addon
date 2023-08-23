@@ -108,7 +108,7 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         bpy.context.view_layer.objects.active = obj
         obj.select_set(True)
-        
+
 
         ##############################
         # Materials
@@ -116,6 +116,46 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         mat = bpy.data.materials.new(name="GaussianSplatting")
         mat.use_nodes = True
+
+        mat_tree = mat.node_tree
+
+        for node in mat_tree.nodes:
+            mat_tree.nodes.remove(node)
+
+        color_attr_node = mat_tree.nodes.new('ShaderNodeAttribute')
+        color_attr_node.location = (0, 0)
+        color_attr_node.attribute_name = "color"
+        color_attr_node.attribute_type = 'INSTANCER'
+
+        opacity_attr_node = mat_tree.nodes.new('ShaderNodeAttribute')
+        opacity_attr_node.location = (0, -200)
+        opacity_attr_node.attribute_name = "opacity"
+        opacity_attr_node.attribute_type = 'INSTANCER'
+
+        principled_node = mat_tree.nodes.new('ShaderNodeBsdfPrincipled')
+        principled_node.location = (200, 0)
+        principled_node.inputs["Base Color"].default_value = (0, 0, 0, 1)
+        principled_node.inputs["Specular"].default_value = 0
+        principled_node.inputs["Roughness"].default_value = 0
+
+        output_node = mat_tree.nodes.new('ShaderNodeOutputMaterial')
+        output_node.location = (400, 0)
+
+        mat_tree.links.new(
+            color_attr_node.outputs["Color"],
+            principled_node.inputs["Emission"]
+        )
+
+        mat_tree.links.new(
+            opacity_attr_node.outputs["Fac"],
+            principled_node.inputs["Alpha"]
+        )
+
+        mat_tree.links.new(
+            principled_node.outputs["BSDF"],
+            output_node.inputs["Surface"]
+        )
+
 
 
 
@@ -153,7 +193,7 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         set_material_node = geo_tree.nodes.new('GeometryNodeSetMaterial')
         set_material_node.location = (600, 0)
-        set_material_node.material = bpy.data.materials["GaussianSplatting"]
+        set_material_node.inputs["Material"].default_value = mat
 
         group_output_node = geo_tree.nodes.new('NodeGroupOutput')
         group_output_node.location = (800, 0)
