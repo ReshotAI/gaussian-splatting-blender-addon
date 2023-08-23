@@ -390,75 +390,206 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         # SH 4
 
+        math_node = mat_tree.nodes.new('ShaderNodeMath')
+        math_node.operation = 'MULTIPLY'
+        math_node.inputs[1].default_value = C2[0]
+
+        mat_tree.links.new(
+            xy,
+            math_node.inputs[0]
+        )
+
         scale_node_4 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_4.operation = 'SCALE'
-        scale_node_4.inputs["Scale"].default_value = C2[0]
+
+        mat_tree.links.new(
+            sh[4],
+            scale_node_4.inputs[0]
+        )
+
+        mat_tree.links.new(
+            math_node.outputs["Value"],
+            scale_node_4.inputs["Scale"]
+        )
 
         # SH 5
 
+        math_node = mat_tree.nodes.new('ShaderNodeMath')
+        math_node.operation = 'MULTIPLY'
+        math_node.inputs[1].default_value = C2[1]
+
+        mat_tree.links.new(
+            yz,
+            math_node.inputs[0]
+        )
+
         scale_node_5 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_5.operation = 'SCALE'
-        scale_node_5.inputs["Scale"].default_value = C2[1]
+
+        mat_tree.links.new(
+            sh[5],
+            scale_node_5.inputs[0]
+        )
+
+        mat_tree.links.new(
+            math_node.outputs["Value"],
+            scale_node_5.inputs["Scale"]
+        )
 
         # SH 6
 
+        math_node1 = mat_tree.nodes.new('ShaderNodeMath')
+        math_node1.operation = 'MULTIPLY'
+        math_node1.inputs[1].default_value = C2[2]
+
+        mat_tree.links.new(
+            zz,
+            math_node1.inputs[0]
+        )
+
+        math_node2 = mat_tree.nodes.new('ShaderNodeMath')
+        math_node2.operation = 'SUBTRACT'
+
+        mat_tree.links.new(
+            math_node1.outputs["Value"],
+            math_node2.inputs[0]
+        )
+
+        mat_tree.links.new(
+            xx,
+            math_node2.inputs[1]
+        )
+
+        math_node3 = mat_tree.nodes.new('ShaderNodeMath')
+        math_node3.operation = 'SUBTRACT'
+
+        mat_tree.links.new(
+            math_node2.outputs["Value"],
+            math_node3.inputs[0]
+        )
+
+        mat_tree.links.new(
+            yy,
+            math_node3.inputs[1]
+        )
+
+        math_node4 = mat_tree.nodes.new('ShaderNodeMath')
+        math_node4.operation = 'MULTIPLY'
+        math_node4.inputs[1].default_value = C2[1]
+
+        mat_tree.links.new(
+            math_node3.outputs["Value"],
+            math_node4.inputs[0]
+        )
+
         scale_node_6 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_6.operation = 'SCALE'
-        scale_node_6.inputs["Scale"].default_value = C2[2]
+
+        mat_tree.links.new(
+            sh[6],
+            scale_node_6.inputs[0]
+        )
+
+        mat_tree.links.new(
+            math_node4.outputs["Value"],
+            scale_node_6.inputs["Scale"]
+        )
 
         # SH 7
 
+        math_node = mat_tree.nodes.new('ShaderNodeMath')
+        math_node.operation = 'MULTIPLY'
+        math_node.inputs[1].default_value = C2[3]
+
+        mat_tree.links.new(
+            xz,
+            math_node.inputs[0]
+        )
+
         scale_node_7 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_7.operation = 'SCALE'
-        scale_node_7.inputs["Scale"].default_value = C2[3]
+
+        mat_tree.links.new(
+            sh[7],
+            scale_node_7.inputs[0]
+        )
+
+        mat_tree.links.new(
+            math_node.outputs["Value"],
+            scale_node_7.inputs["Scale"]
+        )
 
         # SH 8
 
+        math_node1 = mat_tree.nodes.new('ShaderNodeMath')
+        math_node1.operation = 'SUBTRACT'
+
+        mat_tree.links.new(
+            xx,
+            math_node1.inputs[0]
+        )
+
+        mat_tree.links.new(
+            yy,
+            math_node1.inputs[1]
+        )
+
+        math_node2 = mat_tree.nodes.new('ShaderNodeMath')
+        math_node2.operation = 'MULTIPLY'
+        math_node2.inputs[1].default_value = C2[4]
+
+        mat_tree.links.new(
+            math_node1.outputs["Value"],
+            math_node2.inputs[0]
+        )
+
         scale_node_8 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_8.operation = 'SCALE'
-        scale_node_8.inputs["Scale"].default_value = C2[4]
+
+        mat_tree.links.new(
+            sh[8],
+            scale_node_8.inputs[0]
+        )
+
+        mat_tree.links.new(
+            math_node2.outputs["Value"],
+            scale_node_8.inputs["Scale"]
+        )
 
         # SH 9
 
         scale_node_9 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_9.operation = 'SCALE'
-        scale_node_9.inputs["Scale"].default_value = C3[0]
 
         # SH 10
 
         scale_node_10 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_10.operation = 'SCALE'
-        scale_node_10.inputs["Scale"].default_value = C3[1]
 
         # SH 11
 
         scale_node_11 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_11.operation = 'SCALE'
-        scale_node_11.inputs["Scale"].default_value = C3[2]
 
         # SH 12
 
         scale_node_12 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_12.operation = 'SCALE'
-        scale_node_12.inputs["Scale"].default_value = C3[3]
 
         # SH 13
 
         scale_node_13 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_13.operation = 'SCALE'
-        scale_node_13.inputs["Scale"].default_value = C3[4]
 
         # SH 14
 
         scale_node_14 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_14.operation = 'SCALE'
-        scale_node_14.inputs["Scale"].default_value = C3[5]
 
         # SH 15
 
         scale_node_15 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_15.operation = 'SCALE'
-        scale_node_15.inputs["Scale"].default_value = C3[6]
 
 
         # Result
@@ -497,7 +628,22 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
             add_node = new_add_node
 
-        final_node = add_node
+        math_node = mat_tree.nodes.new('ShaderNodeVectorMath')
+        math_node.operation = 'ADD'
+        math_node.inputs[1].default_value = (0.5, 0.5, 0.5)
+
+        mat_tree.links.new(
+            add_node.outputs["Vector"],
+            math_node.inputs[0]
+        )
+
+        final_node = mat_tree.nodes.new('ShaderNodeVectorMath')
+        final_node.operation = 'MAXIMUM'
+
+        mat_tree.links.new(
+            math_node.outputs["Vector"],
+            final_node.inputs[0]
+        )
 
         # Output
 
