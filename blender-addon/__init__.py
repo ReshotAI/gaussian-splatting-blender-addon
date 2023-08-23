@@ -269,20 +269,20 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         scale_node = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node.operation = 'SCALE'
-        scale_node.inputs[1].default_value = C0
+        scale_node.inputs["Scale"].default_value = C0
 
         mat_tree.links.new(
             sh_attr_nodes[0].outputs["Vector"],
             scale_node.inputs[0]
         )
-        
+
 
 
         # Output
 
 
         mat_tree.links.new(
-            sh_attr_nodes[0].outputs["Color"],
+            sh_attr_nodes[0].outputs["Vector"],
             principled_node.inputs["Emission"]
         )
 
