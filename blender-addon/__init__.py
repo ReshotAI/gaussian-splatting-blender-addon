@@ -45,8 +45,14 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         if not self.filepath:
             self.report({'WARNING'}, "Filepath is not set!")
             return {'CANCELLED'}
+
+        start_time = time.time()
         
-        # bpy.ops.import_mesh.ply(filepath=self.filepath)  # Use Blender's built-in ply importer
+        bpy.context.scene.render.engine = 'CYCLES'
+
+        ##############################
+        # Load PLY
+        ##############################
 
         plydata = PlyData.read(self.filepath)
 
@@ -55,6 +61,11 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
                         np.asarray(plydata.elements[0]["z"])),  axis=1)
         
         opacities = np.asarray(plydata.elements[0]["opacity"])[..., np.newaxis]
+
+        features_dc = np.zeros((xyz.shape[0], 3, 1))
+        features_dc[:, 0, 0] = np.asarray(plydata.elements[0]["f_dc_0"])
+        features_dc[:, 1, 0] = np.asarray(plydata.elements[0]["f_dc_1"])
+        features_dc[:, 2, 0] = np.asarray(plydata.elements[0]["f_dc_2"])
 
         scale_names = [p.name for p in plydata.elements[0].properties if p.name.startswith("scale_")]
         scale_names = sorted(scale_names, key = lambda x: int(x.split('_')[-1]))
@@ -68,9 +79,9 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         for idx, attr_name in enumerate(rot_names):
             rots[:, idx] = np.asarray(plydata.elements[0][attr_name])
 
-        start_time = time.time()
-
-        N = len(xyz)
+        ##############################
+        # Load PLY
+        ##############################
 
         mesh = bpy.data.meshes.new(name="Mesh")
         mesh.from_pydata(xyz.tolist(), [], [])
@@ -83,6 +94,10 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         scale_attr = mesh.attributes.new(name="scale", type='FLOAT_VECTOR', domain='POINT')
         for i, v in enumerate(mesh.vertices):
             scale_attr.data[i].vector = scales[i]
+        
+        color_attr = mesh.attributes.new(name="color", type='FLOAT_VECTOR', domain='POINT')
+        for i, v in enumerate(mesh.vertices):
+            color_attr.data[i].vector = features_dc[i]
 
         # rot_attr = mesh.attributes.new(name="rotation", type='FLOAT_VECTOR', domain='POINT')
         # for i, v in enumerate(mesh.vertices):
@@ -93,6 +108,20 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         bpy.context.view_layer.objects.active = obj
         obj.select_set(True)
+        
+
+        ##############################
+        # Materials
+        ##############################
+
+        mat = bpy.data.materials.new(name="GaussianSplatting")
+        mat.use_nodes = True
+
+
+
+        ##############################
+        # Geometry Nodes
+        ##############################
 
         geo_node_mod = obj.modifiers.new(name="GeometryNodes", type='NODES')
 
@@ -103,13 +132,6 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
             geo_tree.nodes.remove(node)
         
         geo_tree.inputs.new('NodeSocketGeometry', "Geometry")
-
-        geo_tree.inputs.new('NodeSocketFloat', "Opacity")
-        geo_tree.inputs["Opacity"].default_value = 1.0
-
-        geo_tree.inputs.new('NodeSocketVector', "Scale")
-        geo_tree.inputs["Scale"].default_value = (1.0, 1.0, 1.0)
-
         geo_tree.outputs.new('NodeSocketGeometry', "Geometry")
 
         group_input_node = geo_tree.nodes.new('NodeGroupInput')
@@ -129,8 +151,12 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         instance_node = geo_tree.nodes.new('GeometryNodeInstanceOnPoints')
         instance_node.location = (400, 0)
 
+        set_material_node = geo_tree.nodes.new('GeometryNodeSetMaterial')
+        set_material_node.location = (600, 0)
+        set_material_node.material = bpy.data.materials["GaussianSplatting"]
+
         group_output_node = geo_tree.nodes.new('NodeGroupOutput')
-        group_output_node.location = (600, 0)
+        group_output_node.location = (800, 0)
 
         geo_tree.links.new(
             group_input_node.outputs["Geometry"],
@@ -151,14 +177,14 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
             mesh_to_points_node.outputs["Points"],
             instance_node.inputs["Points"]
         )
-        
-        # geo_tree.links.new(
-        #     group_input_node.outputs["Scale"],
-        #     mesh_to_points_node.inputs["Scale"]
-        # )
 
         geo_tree.links.new(
             instance_node.outputs["Instances"],
+            set_material_node.inputs["Geometry"]
+        )
+
+        geo_tree.links.new(
+            set_material_node.outputs["Geometry"],
             group_output_node.inputs["Geometry"]
         )
 
