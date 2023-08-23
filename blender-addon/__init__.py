@@ -61,6 +61,7 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
                         -np.asarray(plydata.elements[0]["y"])),  axis=1)
         
         opacities = np.asarray(plydata.elements[0]["opacity"])[..., np.newaxis]
+        opacities = 1 / (1 + np.exp(-opacities))
 
         features_dc = np.zeros((xyz.shape[0], 3, 1))
         features_dc[:, 0, 0] = np.asarray(plydata.elements[0]["f_dc_0"])
@@ -75,12 +76,14 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
             features_extra[:, idx] = np.asarray(plydata.elements[0][attr_name])
         # Reshape (P,F*SH_coeffs) to (P, F, SH_coeffs except DC)
         features_extra = features_extra.reshape((features_extra.shape[0], 3, 15))
+        
+        scales = np.stack((np.asarray(plydata.elements[0]["scale_2"]),
+                           np.asarray(plydata.elements[0]["scale_0"]),
+                           np.asarray(plydata.elements[0]["scale_1"])),  axis=1)
+        scales = np.exp(scales)
 
-        scale_names = [p.name for p in plydata.elements[0].properties if p.name.startswith("scale_")]
-        scale_names = sorted(scale_names, key = lambda x: int(x.split('_')[-1]))
-        scales = np.zeros((xyz.shape[0], len(scale_names)))
-        for idx, attr_name in enumerate(scale_names):
-            scales[:, idx] = np.asarray(plydata.elements[0][attr_name])
+        print(scales.shape)
+        print(np.mean(scales, axis=0))
 
         rot_names = [p.name for p in plydata.elements[0].properties if p.name.startswith("rot")]
         rot_names = sorted(rot_names, key = lambda x: int(x.split('_')[-1]))
@@ -630,7 +633,7 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         math_node = mat_tree.nodes.new('ShaderNodeVectorMath')
         math_node.operation = 'ADD'
-        math_node.inputs[1].default_value = (0.5, 0.5, 0.5)
+        math_node.inputs[1].default_value = (0, 0, 0)  # TODO: should be 0.5
 
         mat_tree.links.new(
             add_node.outputs["Vector"],
