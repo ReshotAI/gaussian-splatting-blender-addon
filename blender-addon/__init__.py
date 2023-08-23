@@ -136,10 +136,18 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         for node in mat_tree.nodes:
             mat_tree.nodes.remove(node)
 
-        color_attr_node = mat_tree.nodes.new('ShaderNodeAttribute')
-        color_attr_node.location = (0, 0)
-        color_attr_node.attribute_name = "sh0"
-        color_attr_node.attribute_type = 'INSTANCER'
+        sh_attr_nodes = []
+
+        for j in range(0, 16):
+            sh_attr_node = mat_tree.nodes.new('ShaderNodeAttribute')
+            sh_attr_node.location = (0, 0)
+            sh_attr_node.attribute_name = f"sh{j}"
+            sh_attr_node.attribute_type = 'INSTANCER'
+            sh_attr_nodes.append(sh_attr_node)
+
+        position_attr_node = mat_tree.nodes.new('ShaderNodeAttribute')
+        position_attr_node.attribute_name = "position"
+        position_attr_node.attribute_type = 'INSTANCER'
 
         opacity_attr_node = mat_tree.nodes.new('ShaderNodeAttribute')
         opacity_attr_node.location = (0, -200)
@@ -155,8 +163,126 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         output_node = mat_tree.nodes.new('ShaderNodeOutputMaterial')
         output_node.location = (400, 0)
 
+        # Camera location
+        combine_xyz_node = mat_tree.nodes.new('ShaderNodeCombineXYZ')
+        vector_transform_node = mat_tree.nodes.new('ShaderNodeVectorTransform')
+        vector_transform_node.vector_type = 'POINT'
+        vector_transform_node.convert_from = 'CAMERA'
+        vector_transform_node.convert_to = 'WORLD'
+
         mat_tree.links.new(
-            color_attr_node.outputs["Color"],
+            combine_xyz_node.outputs["Vector"],
+            vector_transform_node.inputs["Vector"]
+        )
+
+        # View direction
+
+        dir_node = mat_tree.nodes.new('ShaderNodeVectorMath')
+        dir_node.operation = 'SUBTRACT'
+
+        normalize_node = mat_tree.nodes.new('ShaderNodeVectorMath')
+        normalize_node.operation = 'NORMALIZE'
+
+        mat_tree.links.new(
+            position_attr_node.outputs["Vector"],
+            dir_node.inputs[0]
+        )
+
+        mat_tree.links.new(
+            vector_transform_node.outputs["Vector"],
+            dir_node.inputs[1]
+        )
+
+        mat_tree.links.new(
+            dir_node.outputs["Vector"],
+            normalize_node.inputs[0]
+        )
+
+        # Coordinate system transform (x -> -y, y -> -z, z -> x)
+
+        separate_xyz_node = mat_tree.nodes.new('ShaderNodeSeparateXYZ')
+        combine_xyz_node = mat_tree.nodes.new('ShaderNodeCombineXYZ')
+
+        multiply_node = mat_tree.nodes.new('ShaderNodeVectorMath')
+        multiply_node.operation = 'MULTIPLY'
+        multiply_node.inputs[1].default_value = (-1, -1, 1)
+
+        mat_tree.links.new(
+            normalize_node.outputs["Vector"],
+            separate_xyz_node.inputs["Vector"]
+        )
+
+        mat_tree.links.new(
+            separate_xyz_node.outputs["X"],
+            combine_xyz_node.inputs["Y"]
+        )
+
+        mat_tree.links.new(
+            separate_xyz_node.outputs["Y"],
+            combine_xyz_node.inputs["Z"]
+        )
+
+        mat_tree.links.new(
+            separate_xyz_node.outputs["Z"],
+            combine_xyz_node.inputs["X"]
+        )
+
+        mat_tree.links.new(
+            combine_xyz_node.outputs["Vector"],
+            multiply_node.inputs[0]
+        )
+
+
+        # SH Coefficients
+
+        C0 = 0.28209479177387814
+        C1 = 0.4886025119029199
+        C2 = [
+            1.0925484305920792,
+            -1.0925484305920792,
+            0.31539156525252005,
+            -1.0925484305920792,
+            0.5462742152960396
+        ]
+        C3 = [
+            -0.5900435899266435,
+            2.890611442640554,
+            -0.4570457994644658,
+            0.3731763325901154,
+            -0.4570457994644658,
+            1.445305721320277,
+            -0.5900435899266435
+        ]
+        C4 = [
+            2.5033429417967046,
+            -1.7701307697799304,
+            0.9461746957575601,
+            -0.6690465435572892,
+            0.10578554691520431,
+            -0.6690465435572892,
+            0.47308734787878004,
+            -1.7701307697799304,
+            0.6258357354491761,
+        ]
+
+        separate_xyz_node = mat_tree.nodes.new('ShaderNodeSeparateXYZ')
+
+        scale_node = mat_tree.nodes.new('ShaderNodeVectorMath')
+        scale_node.operation = 'SCALE'
+        scale_node.inputs[1].default_value = C0
+
+        mat_tree.links.new(
+            sh_attr_nodes[0].outputs["Vector"],
+            scale_node.inputs[0]
+        )
+        
+
+
+        # Output
+
+
+        mat_tree.links.new(
+            sh_attr_nodes[0].outputs["Color"],
             principled_node.inputs["Emission"]
         )
 
@@ -169,9 +295,6 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
             principled_node.outputs["BSDF"],
             output_node.inputs["Surface"]
         )
-
-
-
 
         ##############################
         # Geometry Nodes
