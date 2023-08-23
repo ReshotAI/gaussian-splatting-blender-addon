@@ -255,19 +255,13 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
             1.445305721320277,
             -0.5900435899266435
         ]
-        C4 = [
-            2.5033429417967046,
-            -1.7701307697799304,
-            0.9461746957575601,
-            -0.6690465435572892,
-            0.10578554691520431,
-            -0.6690465435572892,
-            0.47308734787878004,
-            -1.7701307697799304,
-            0.6258357354491761,
-        ]
 
         separate_xyz_node = mat_tree.nodes.new('ShaderNodeSeparateXYZ')
+
+        mat_tree.links.new(
+            multiply_node.outputs["Vector"],
+            separate_xyz_node.inputs["Vector"]
+        )
 
         x = separate_xyz_node.outputs["X"]
         y = separate_xyz_node.outputs["Y"]
@@ -342,7 +336,7 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         mat_tree.links.new(
             math_node.outputs["Value"],
-            scale_node_1.inputs[1]
+            scale_node_1.inputs["Scale"]
         )
 
         # SH 2
@@ -467,7 +461,7 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
             add_node = new_add_node
 
         final_node = add_node
-        
+
         # Output
 
         mat_tree.links.new(
