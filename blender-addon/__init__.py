@@ -112,12 +112,6 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         geo_tree.outputs.new('NodeSocketGeometry', "Geometry")
 
-        bpy.ops.object.geometry_nodes_input_attribute_toggle(prop_path="[\"Input_1_use_attribute\"]", modifier_name="GeometryNodes")
-        bpy.ops.object.geometry_nodes_input_attribute_toggle(prop_path="[\"Input_2_use_attribute\"]", modifier_name="GeometryNodes")
-
-        obj.modifiers["GeometryNodes"]["Input_1_attribute_name"] = "opacity"
-        obj.modifiers["GeometryNodes"]["Input_2_attribute_name"] = "scale"
-
         group_input_node = geo_tree.nodes.new('NodeGroupInput')
         group_input_node.location = (0, 0)
 
@@ -126,8 +120,11 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         ico_node = geo_tree.nodes.new('GeometryNodeMeshIcoSphere')
         ico_node.location = (200, 200)
-        ico_node.inputs["Subdivisions"].default_value = 1
-        ico_node.inputs["Radius"].default_value = 0.01
+        ico_node.inputs["Subdivisions"].default_value = 3
+        ico_node.inputs["Radius"].default_value = 0.005
+
+        set_shade_smooth_node = geo_tree.nodes.new('GeometryNodeSetShadeSmooth')
+        set_shade_smooth_node.location = (200, 200)
 
         instance_node = geo_tree.nodes.new('GeometryNodeInstanceOnPoints')
         instance_node.location = (400, 0)
@@ -142,6 +139,11 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         geo_tree.links.new(
             ico_node.outputs["Mesh"],
+            set_shade_smooth_node.inputs["Geometry"]
+        )
+
+        geo_tree.links.new(
+            set_shade_smooth_node.outputs["Geometry"],
             instance_node.inputs["Instance"]
         )
 
@@ -149,7 +151,7 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
             mesh_to_points_node.outputs["Points"],
             instance_node.inputs["Points"]
         )
-
+        
         # geo_tree.links.new(
         #     group_input_node.outputs["Scale"],
         #     mesh_to_points_node.inputs["Scale"]
