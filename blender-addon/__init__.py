@@ -341,15 +341,52 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         # SH 2
 
+        math_node = mat_tree.nodes.new('ShaderNodeMath')
+        math_node.operation = 'MULTIPLY'
+        math_node.inputs[1].default_value = C1
+
+        mat_tree.links.new(
+            z,
+            math_node.inputs[0]
+        )
+
         scale_node_2 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_2.operation = 'SCALE'
-        scale_node_2.inputs["Scale"].default_value = C1
+
+        mat_tree.links.new(
+            sh[2],
+            scale_node_2.inputs[0]
+        )
+
+        mat_tree.links.new(
+            math_node.outputs["Value"],
+            scale_node_2.inputs["Scale"]
+        )
+
 
         # SH 3
 
+        math_node = mat_tree.nodes.new('ShaderNodeMath')
+        math_node.operation = 'MULTIPLY'
+        math_node.inputs[1].default_value = -C1
+
+        mat_tree.links.new(
+            x,
+            math_node.inputs[0]
+        )
+
         scale_node_3 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_3.operation = 'SCALE'
-        scale_node_3.inputs["Scale"].default_value = -C1
+
+        mat_tree.links.new(
+            sh[3],
+            scale_node_3.inputs[0]
+        )
+
+        mat_tree.links.new(
+            math_node.outputs["Value"],
+            scale_node_3.inputs["Scale"]
+        )
 
         # SH 4
 
