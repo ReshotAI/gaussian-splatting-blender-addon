@@ -8,6 +8,7 @@ bl_info = {
 }
 
 import bpy
+import mathutils
 import numpy as np
 import time
 import random
@@ -61,7 +62,7 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         xyz = np.stack((np.asarray(plydata.elements[0]["z"]),
                         -np.asarray(plydata.elements[0]["x"]),
-                        -np.asarray(plydata.elements[0]["y"])),  axis=1)
+                        -np.asarray(plydata.elements[0]["y"])), axis=1)
         
         opacities = np.asarray(plydata.elements[0]["opacity"])[..., np.newaxis]
         opacities = 1 / (1 + np.exp(-opacities))
@@ -82,17 +83,26 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         
         scales = np.stack((np.asarray(plydata.elements[0]["scale_2"]),
                            np.asarray(plydata.elements[0]["scale_0"]),
-                           np.asarray(plydata.elements[0]["scale_1"])),  axis=1)
+                           np.asarray(plydata.elements[0]["scale_1"])), axis=1)
         scales = np.exp(scales)
 
         print(scales.shape)
         print(np.mean(scales, axis=0))
 
-        rot_names = [p.name for p in plydata.elements[0].properties if p.name.startswith("rot")]
-        rot_names = sorted(rot_names, key = lambda x: int(x.split('_')[-1]))
-        rots = np.zeros((xyz.shape[0], len(rot_names)))
-        for idx, attr_name in enumerate(rot_names):
-            rots[:, idx] = np.asarray(plydata.elements[0][attr_name])
+        rots = np.stack((np.asarray(plydata.elements[0]["rot_2"]),
+                         -np.asarray(plydata.elements[0]["rot_0"]),
+                         -np.asarray(plydata.elements[0]["rot_1"]),
+                         np.asarray(plydata.elements[0]["rot_3"])), axis=1)
+
+        # Normalize quaternion
+        rots = rots / np.linalg.norm(rots, axis=1, keepdims=True)
+
+        # convert to Euler
+        rots_euler = np.zeros((rots.shape[0], 3))
+        for i in range(rots.shape[0]):
+            quat = mathutils.Quaternion(rots[i])
+            euler = quat.to_euler()
+            rots_euler[i] = (euler.x, euler.y, euler.z)
 
         ##############################
         # Load PLY
@@ -119,9 +129,9 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
             for i, v in enumerate(mesh.vertices):
                 sh_attr.data[i].vector = features_extra[i, :, j]
 
-        # rot_attr = mesh.attributes.new(name="rotation", type='FLOAT_VECTOR', domain='POINT')
-        # for i, v in enumerate(mesh.vertices):
-        #     rot_attr.data[i].vector = rots[i]
+        rot_euler_attr = mesh.attributes.new(name="rot_euler", type='FLOAT_VECTOR', domain='POINT')
+        for i, v in enumerate(mesh.vertices):
+            rot_euler_attr.data[i].vector = rots_euler[i]
 
         obj = bpy.data.objects.new("GaussianSplatting", mesh)
         bpy.context.collection.objects.link(obj)
@@ -743,8 +753,18 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         scale_attr.data_type = 'FLOAT_VECTOR'
         scale_attr.inputs["Name"].default_value = "scale"
 
+        scale_node = geo_tree.nodes.new('GeometryNodeAttributeVectorMath')
+        scale_node.operation = 'SCALE'
+        scale_node.location = (0, 200)
+        scale_node.inputs["Scale"].default_value = 2
+
         geo_tree.links.new(
             scale_attr.outputs["Attribute"],
+            scale_node.inputs[0]
+        )
+
+        geo_tree.links.new(
+            scale_node.outputs["Vector"],
             instance_node.inputs["Scale"]
         )
 
