@@ -747,13 +747,13 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
             group_output_node.inputs["Geometry"]
         )
 
-        # named attribute of type vector with name scale
+        # Scale
         scale_attr = geo_tree.nodes.new('GeometryNodeInputNamedAttribute')
         scale_attr.location = (0, 200)
         scale_attr.data_type = 'FLOAT_VECTOR'
         scale_attr.inputs["Name"].default_value = "scale"
 
-        scale_node = geo_tree.nodes.new('GeometryNodeAttributeVectorMath')
+        scale_node = geo_tree.nodes.new('ShaderNodeVectorMath')
         scale_node.operation = 'SCALE'
         scale_node.location = (0, 200)
         scale_node.inputs["Scale"].default_value = 2
@@ -766,6 +766,17 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         geo_tree.links.new(
             scale_node.outputs["Vector"],
             instance_node.inputs["Scale"]
+        )
+
+        # Rotation
+        rot_euler_attr = geo_tree.nodes.new('GeometryNodeInputNamedAttribute')
+        rot_euler_attr.location = (0, 400)
+        rot_euler_attr.data_type = 'FLOAT_VECTOR'
+        rot_euler_attr.inputs["Name"].default_value = "rot_euler"
+
+        geo_tree.links.new(
+            rot_euler_attr.outputs["Attribute"],
+            instance_node.inputs["Rotation"]
         )
 
         print("Processing time: ", time.time() - start_time)
