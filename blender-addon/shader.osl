@@ -1,0 +1,8 @@
+shader simple_material(
+    output closure color BSDF = emission()
+){
+    
+    color material_color = P;
+
+    BSDF = material_color * emission();
+}
