@@ -4,5 +4,8 @@ shader simple_material(
     
     color material_color = P;
 
-    BSDF = material_color * emission();
+    color fov = color(0,0,0);
+    getattribute("object:location", fov);
+
+    BSDF = fov * emission();
 }
