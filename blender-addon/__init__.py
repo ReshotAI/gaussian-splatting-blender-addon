@@ -794,14 +794,17 @@ class GaussianSplattingPanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
 
-        view = context.space_data
-
         # Filepath input
         layout.prop(context.scene, "ply_file_path", text="PLY Filepath")
 
         row = layout.row()
-        row.prop(view, "lens", text="Focal Length")
+        row.prop(context.space_data, "lens", text="Focal Length")
         
+        # print(context.area.spaces.active.region_3d.view_distance)
+        # print(context.area)
+        # print(context.area.spaces.active.region_3d.view_matrix)
+        # print(context.area.spaces.active.lens)
+
         # Import PLY button
         row = layout.row()
         row.operator(OBJECT_OT_ImportGaussianSplatting.bl_idname, text="Import Gaussian Splatting").filepath = context.scene.ply_file_path
