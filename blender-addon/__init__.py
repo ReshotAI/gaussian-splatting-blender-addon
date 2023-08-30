@@ -699,15 +699,13 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         mat_tree.links.new(
             maximum_node.outputs["Value"],
-            scale_node.inputs[1]
+            scale_node.inputs["Scale"]
         )
 
         mat_tree.links.new(
             scale_node.outputs["Vector"],
             principled_node.inputs["Emission"]
         )
-
-
 
         # Opacity
 
@@ -722,7 +720,7 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         add_node = mat_tree.nodes.new('ShaderNodeMath')
         add_node.operation = 'ADD'
-        add_node.clamp = True
+        add_node.use_clamp = True
         add_node.inputs[1].default_value = 0.05
 
         mat_tree.links.new(
