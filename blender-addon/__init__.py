@@ -86,16 +86,13 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
                            np.asarray(plydata.elements[0]["scale_1"])), axis=1)
         scales = np.exp(scales)
 
-        print(scales.shape)
-        print(np.mean(scales, axis=0))
-
         rots = np.stack((np.asarray(plydata.elements[0]["rot_2"]),
                          -np.asarray(plydata.elements[0]["rot_0"]),
                          -np.asarray(plydata.elements[0]["rot_1"]),
                          np.asarray(plydata.elements[0]["rot_3"])), axis=1)
 
         # Normalize quaternion
-        rots = rots / np.linalg.norm(rots, axis=1, keepdims=True)
+        # rots = rots / np.linalg.norm(rots, axis=1, keepdims=True)
 
         # convert to Euler
         rots_euler = np.zeros((rots.shape[0], 3))
@@ -644,34 +641,103 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
             add_node = new_add_node
 
-        math_node = mat_tree.nodes.new('ShaderNodeVectorMath')
-        math_node.operation = 'ADD'
-        math_node.inputs[1].default_value = (0, 0, 0)  # TODO: should be 0.5
+        # TODO: REPLACE
+
+        scale_node = mat_tree.nodes.new('ShaderNodeVectorMath')
+        scale_node.operation = 'SCALE'
+        scale_node.inputs["Scale"].default_value = 0.2
 
         mat_tree.links.new(
-            add_node.outputs["Vector"],
+            sh[0],
+            scale_node.inputs[0]
+        )
+
+
+        math_node = mat_tree.nodes.new('ShaderNodeVectorMath')
+        math_node.operation = 'ADD'
+        math_node.inputs[1].default_value = (0.5, 0.5, 0.5)  # TODO: should be 0.5
+
+        mat_tree.links.new(
+            scale_node.outputs["Vector"],
             math_node.inputs[0]
         )
 
-        final_node = mat_tree.nodes.new('ShaderNodeVectorMath')
-        final_node.operation = 'MAXIMUM'
+        
+
+        # View dependence
+        geometry_node = mat_tree.nodes.new('ShaderNodeNewGeometry')
+
+        dot_node = mat_tree.nodes.new('ShaderNodeVectorMath')
+        dot_node.operation = 'DOT_PRODUCT'
+
+        mat_tree.links.new(
+            geometry_node.outputs["Normal"],
+            dot_node.inputs[0]
+        )
+
+        mat_tree.links.new(
+            geometry_node.outputs["Incoming"],
+            dot_node.inputs[1]
+        )
+
+        maximum_node = mat_tree.nodes.new('ShaderNodeMath')
+        maximum_node.operation = 'MAXIMUM'
+        maximum_node.inputs[1].default_value = 0.4
+
+        mat_tree.links.new(
+            dot_node.outputs["Value"],
+            maximum_node.inputs[0]
+        )
+
+        scale_node = mat_tree.nodes.new('ShaderNodeVectorMath')
+        scale_node.operation = 'SCALE'
 
         mat_tree.links.new(
             math_node.outputs["Vector"],
-            final_node.inputs[0]
+            scale_node.inputs[0]
         )
 
-        # Output
+        mat_tree.links.new(
+            maximum_node.outputs["Value"],
+            scale_node.inputs[1]
+        )
 
         mat_tree.links.new(
-            final_node.outputs["Vector"],
+            scale_node.outputs["Vector"],
             principled_node.inputs["Emission"]
         )
 
+
+
+        # Opacity
+
+        greater_than_node = mat_tree.nodes.new('ShaderNodeMath')
+        greater_than_node.operation = 'GREATER_THAN'
+        greater_than_node.inputs[1].default_value = 0.2
+
         mat_tree.links.new(
             opacity_attr_node.outputs["Fac"],
+            greater_than_node.inputs[0]
+        )
+
+        add_node = mat_tree.nodes.new('ShaderNodeMath')
+        add_node.operation = 'ADD'
+        add_node.clamp = True
+        add_node.inputs[1].default_value = 0.05
+
+        mat_tree.links.new(
+            greater_than_node.outputs["Value"],
+            add_node.inputs[0]
+        )
+
+
+        mat_tree.links.new(
+            add_node.outputs["Value"],
             principled_node.inputs["Alpha"]
         )
+
+
+        # Output
 
         mat_tree.links.new(
             principled_node.outputs["BSDF"],
@@ -796,14 +862,6 @@ class GaussianSplattingPanel(bpy.types.Panel):
 
         # Filepath input
         layout.prop(context.scene, "ply_file_path", text="PLY Filepath")
-
-        row = layout.row()
-        row.prop(context.space_data, "lens", text="Focal Length")
-        
-        # print(context.area.spaces.active.region_3d.view_distance)
-        # print(context.area)
-        # print(context.area.spaces.active.region_3d.view_matrix)
-        # print(context.area.spaces.active.lens)
 
         # Import PLY button
         row = layout.row()
