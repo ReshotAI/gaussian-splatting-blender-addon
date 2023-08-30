@@ -28,6 +28,53 @@ class OBJECT_OT_AddTenCircles(bpy.types.Operator):
         return {'FINISHED'}
 
 
+
+# mat3 quatToMat3(vec4 q) {
+#   float qx = q.y;
+#   float qy = q.z;
+#   float qz = q.w;
+#   float qw = q.x;
+
+#   float qxx = qx * qx;
+#   float qyy = qy * qy;
+#   float qzz = qz * qz;
+#   float qxz = qx * qz;
+#   float qxy = qx * qy;
+#   float qyw = qy * qw;
+#   float qzw = qz * qw;
+#   float qyz = qy * qz;
+#   float qxw = qx * qw;
+
+#   return mat3(
+#     vec3(1.0 - 2.0 * (qyy + qzz), 2.0 * (qxy - qzw), 2.0 * (qxz + qyw)),
+#     vec3(2.0 * (qxy + qzw), 1.0 - 2.0 * (qxx + qzz), 2.0 * (qyz - qxw)),
+#     vec3(2.0 * (qxz - qyw), 2.0 * (qyz + qxw), 1.0 - 2.0 * (qxx + qyy))
+#   );
+# }
+
+def quatToMat3(quat):
+    qx = quat[1]
+    qy = quat[2]
+    qz = quat[3]
+    qw = quat[0]
+
+    qxx = qx * qx
+    qyy = qy * qy
+    qzz = qz * qz
+    qxz = qx * qz
+    qxy = qx * qy
+    qyw = qy * qw
+    qzw = qz * qw
+    qyz = qy * qz
+    qxw = qx * qw
+
+    return np.array([
+        [1.0 - 2.0 * (qyy + qzz), 2.0 * (qxy - qzw), 2.0 * (qxz + qyw)],
+        [2.0 * (qxy + qzw), 1.0 - 2.0 * (qxx + qzz), 2.0 * (qyz - qxw)],
+        [2.0 * (qxz - qyw), 2.0 * (qyz + qxw), 1.0 - 2.0 * (qxx + qyy)]
+    ])
+
+
 class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
     bl_idname = "object.import_gaussian_splatting"
     bl_label = "Import Gaussian Splatting"
@@ -54,15 +101,21 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         bpy.context.preferences.addons['cycles'].preferences.compute_device_type = 'OPTIX'  # TODO: check if OPTIX is available
         bpy.context.scene.cycles.device = 'GPU'  # TODO: check if GPU is available
 
+        bpy.context.scene.display_settings.display_device = 'None'
+
         ##############################
         # Load PLY
         ##############################
 
         plydata = PlyData.read(self.filepath)
 
-        xyz = np.stack((np.asarray(plydata.elements[0]["z"]),
-                        -np.asarray(plydata.elements[0]["x"]),
-                        -np.asarray(plydata.elements[0]["y"])), axis=1)
+        # xyz = np.stack((np.asarray(plydata.elements[0]["z"]),
+        #                 -np.asarray(plydata.elements[0]["x"]),
+        #                 -np.asarray(plydata.elements[0]["y"])), axis=1)
+
+        xyz = np.stack((np.asarray(plydata.elements[0]["x"]),
+                        np.asarray(plydata.elements[0]["y"]),
+                        np.asarray(plydata.elements[0]["z"])), axis=1)
         
         opacities = np.asarray(plydata.elements[0]["opacity"])[..., np.newaxis]
         opacities = 1 / (1 + np.exp(-opacities))
@@ -81,24 +134,41 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         # Reshape (P,F*SH_coeffs) to (P, F, SH_coeffs except DC)
         features_extra = features_extra.reshape((features_extra.shape[0], 3, 15))
         
-        scales = np.stack((np.asarray(plydata.elements[0]["scale_2"]),
-                           np.asarray(plydata.elements[0]["scale_0"]),
-                           np.asarray(plydata.elements[0]["scale_1"])), axis=1)
+        # scales = np.stack((np.asarray(plydata.elements[0]["scale_2"]),
+        #                    np.asarray(plydata.elements[0]["scale_0"]),
+        #                    np.asarray(plydata.elements[0]["scale_1"])), axis=1)
+
+        scales = np.stack((np.asarray(plydata.elements[0]["scale_0"]),
+                           np.asarray(plydata.elements[0]["scale_1"]),
+                           np.asarray(plydata.elements[0]["scale_2"])), axis=1)
+
         scales = np.exp(scales)
 
-        rots = np.stack((np.asarray(plydata.elements[0]["rot_2"]),
-                         -np.asarray(plydata.elements[0]["rot_0"]),
-                         -np.asarray(plydata.elements[0]["rot_1"]),
-                         np.asarray(plydata.elements[0]["rot_3"])), axis=1)
+        # rots = np.stack((np.asarray(plydata.elements[0]["rot_2"]),
+        #                  -np.asarray(plydata.elements[0]["rot_0"]),
+        #                  -np.asarray(plydata.elements[0]["rot_1"]),
+        #                  np.asarray(plydata.elements[0]["rot_3"])), axis=1)
+        
+        quats = np.stack((np.asarray(plydata.elements[0]["rot_0"]),
+                          np.asarray(plydata.elements[0]["rot_1"]),
+                          np.asarray(plydata.elements[0]["rot_2"]),
+                          np.asarray(plydata.elements[0]["rot_3"])), axis=1)
 
         # Normalize quaternion
         # rots = rots / np.linalg.norm(rots, axis=1, keepdims=True)
 
         # convert to Euler
-        rots_euler = np.zeros((rots.shape[0], 3))
-        for i in range(rots.shape[0]):
-            quat = mathutils.Quaternion(rots[i])
+        print(quats.shape)
+
+        rots_euler = np.zeros((quats.shape[0], 3))
+
+        for i in range(quats.shape[0]):
+            # rot = quatToMat3(quats[i])
+
+            quat = mathutils.Quaternion(quats[i])
             euler = quat.to_euler()
+
+
             rots_euler[i] = (euler.x, euler.y, euler.z)
 
         ##############################
@@ -643,97 +713,114 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         # TODO: REPLACE
 
-        scale_node = mat_tree.nodes.new('ShaderNodeVectorMath')
-        scale_node.operation = 'SCALE'
-        scale_node.inputs["Scale"].default_value = 0.2
+        # scale_node = mat_tree.nodes.new('ShaderNodeVectorMath')
+        # scale_node.operation = 'SCALE'
+        # scale_node.inputs["Scale"].default_value = 0.2
 
-        mat_tree.links.new(
-            sh[0],
-            scale_node.inputs[0]
-        )
+        # mat_tree.links.new(
+        #     sh[0],
+        #     scale_node.inputs[0]
+        # )
 
 
         math_node = mat_tree.nodes.new('ShaderNodeVectorMath')
         math_node.operation = 'ADD'
         math_node.inputs[1].default_value = (0.5, 0.5, 0.5)  # TODO: should be 0.5
 
+
         mat_tree.links.new(
-            scale_node.outputs["Vector"],
+            add_node.outputs["Vector"],
             math_node.inputs[0]
         )
+
+        mat_tree.links.new(
+            math_node.outputs["Vector"],
+            principled_node.inputs["Emission"]
+        )
+
+
+        # mat_tree.links.new(
+        #     scale_node.outputs["Vector"],
+        #     math_node.inputs[0]
+        # )
 
         
 
         # View dependence
-        geometry_node = mat_tree.nodes.new('ShaderNodeNewGeometry')
+        # geometry_node = mat_tree.nodes.new('ShaderNodeNewGeometry')
 
-        dot_node = mat_tree.nodes.new('ShaderNodeVectorMath')
-        dot_node.operation = 'DOT_PRODUCT'
+        # dot_node = mat_tree.nodes.new('ShaderNodeVectorMath')
+        # dot_node.operation = 'DOT_PRODUCT'
 
-        mat_tree.links.new(
-            geometry_node.outputs["Normal"],
-            dot_node.inputs[0]
-        )
+        # mat_tree.links.new(
+        #     geometry_node.outputs["Normal"],
+        #     dot_node.inputs[0]
+        # )
 
-        mat_tree.links.new(
-            geometry_node.outputs["Incoming"],
-            dot_node.inputs[1]
-        )
+        # mat_tree.links.new(
+        #     geometry_node.outputs["Incoming"],
+        #     dot_node.inputs[1]
+        # )
 
-        maximum_node = mat_tree.nodes.new('ShaderNodeMath')
-        maximum_node.operation = 'MAXIMUM'
-        maximum_node.inputs[1].default_value = 0.4
+        # maximum_node = mat_tree.nodes.new('ShaderNodeMath')
+        # maximum_node.operation = 'MAXIMUM'
+        # maximum_node.inputs[1].default_value = 0.4
 
-        mat_tree.links.new(
-            dot_node.outputs["Value"],
-            maximum_node.inputs[0]
-        )
+        # mat_tree.links.new(
+        #     dot_node.outputs["Value"],
+        #     maximum_node.inputs[0]
+        # )
 
-        scale_node = mat_tree.nodes.new('ShaderNodeVectorMath')
-        scale_node.operation = 'SCALE'
+        # scale_node = mat_tree.nodes.new('ShaderNodeVectorMath')
+        # scale_node.operation = 'SCALE'
 
-        mat_tree.links.new(
-            math_node.outputs["Vector"],
-            scale_node.inputs[0]
-        )
+        # mat_tree.links.new(
+        #     math_node.outputs["Vector"],
+        #     scale_node.inputs[0]
+        # )
 
-        mat_tree.links.new(
-            maximum_node.outputs["Value"],
-            scale_node.inputs["Scale"]
-        )
+        # mat_tree.links.new(
+        #     maximum_node.outputs["Value"],
+        #     scale_node.inputs["Scale"]
+        # )
 
-        mat_tree.links.new(
-            scale_node.outputs["Vector"],
-            principled_node.inputs["Emission"]
-        )
+        # mat_tree.links.new(
+        #     scale_node.outputs["Vector"],
+        #     principled_node.inputs["Emission"]
+        # )
 
         # Opacity
 
-        greater_than_node = mat_tree.nodes.new('ShaderNodeMath')
-        greater_than_node.operation = 'GREATER_THAN'
-        greater_than_node.inputs[1].default_value = 0.2
+        # greater_than_node = mat_tree.nodes.new('ShaderNodeMath')
+        # greater_than_node.operation = 'GREATER_THAN'
+        # greater_than_node.inputs[1].default_value = 0.2
 
+        # mat_tree.links.new(
+        #     opacity_attr_node.outputs["Fac"],
+        #     greater_than_node.inputs[0]
+        # )
+
+        # add_node = mat_tree.nodes.new('ShaderNodeMath')
+        # add_node.operation = 'ADD'
+        # add_node.use_clamp = True
+        # add_node.inputs[1].default_value = 0.05
+
+        # mat_tree.links.new(
+        #     greater_than_node.outputs["Value"],
+        #     add_node.inputs[0]
+        # )
+
+
+        # mat_tree.links.new(
+        #     add_node.outputs["Value"],
+        #     principled_node.inputs["Alpha"]
+        # )
+
+        
         mat_tree.links.new(
             opacity_attr_node.outputs["Fac"],
-            greater_than_node.inputs[0]
-        )
-
-        add_node = mat_tree.nodes.new('ShaderNodeMath')
-        add_node.operation = 'ADD'
-        add_node.use_clamp = True
-        add_node.inputs[1].default_value = 0.05
-
-        mat_tree.links.new(
-            greater_than_node.outputs["Value"],
-            add_node.inputs[0]
-        )
-
-
-        mat_tree.links.new(
-            add_node.outputs["Value"],
             principled_node.inputs["Alpha"]
         )
-
 
         # Output
 
@@ -765,7 +852,7 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         ico_node = geo_tree.nodes.new('GeometryNodeMeshIcoSphere')
         ico_node.location = (200, 200)
-        ico_node.inputs["Subdivisions"].default_value = 3
+        ico_node.inputs["Subdivisions"].default_value = 1
         ico_node.inputs["Radius"].default_value = 1
 
         set_shade_smooth_node = geo_tree.nodes.new('GeometryNodeSetShadeSmooth')
