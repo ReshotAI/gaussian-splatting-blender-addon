@@ -28,30 +28,6 @@ class OBJECT_OT_AddTenCircles(bpy.types.Operator):
         return {'FINISHED'}
 
 
-
-# mat3 quatToMat3(vec4 q) {
-#   float qx = q.y;
-#   float qy = q.z;
-#   float qz = q.w;
-#   float qw = q.x;
-
-#   float qxx = qx * qx;
-#   float qyy = qy * qy;
-#   float qzz = qz * qz;
-#   float qxz = qx * qz;
-#   float qxy = qx * qy;
-#   float qyw = qy * qw;
-#   float qzw = qz * qw;
-#   float qyz = qy * qz;
-#   float qxw = qx * qw;
-
-#   return mat3(
-#     vec3(1.0 - 2.0 * (qyy + qzz), 2.0 * (qxy - qzw), 2.0 * (qxz + qyw)),
-#     vec3(2.0 * (qxy + qzw), 1.0 - 2.0 * (qxx + qzz), 2.0 * (qyz - qxw)),
-#     vec3(2.0 * (qxz - qyw), 2.0 * (qyz + qxw), 1.0 - 2.0 * (qxx + qyy))
-#   );
-# }
-
 def quatToMat3(quat):
     qx = quat[1]
     qy = quat[2]
@@ -711,21 +687,9 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
             add_node = new_add_node
 
-        # TODO: REPLACE
-
-        # scale_node = mat_tree.nodes.new('ShaderNodeVectorMath')
-        # scale_node.operation = 'SCALE'
-        # scale_node.inputs["Scale"].default_value = 0.2
-
-        # mat_tree.links.new(
-        #     sh[0],
-        #     scale_node.inputs[0]
-        # )
-
-
         math_node = mat_tree.nodes.new('ShaderNodeVectorMath')
         math_node.operation = 'ADD'
-        math_node.inputs[1].default_value = (0.5, 0.5, 0.5)  # TODO: should be 0.5
+        math_node.inputs[1].default_value = (0.5, 0.5, 0.5)
 
 
         mat_tree.links.new(
@@ -737,84 +701,6 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
             math_node.outputs["Vector"],
             principled_node.inputs["Emission"]
         )
-
-
-        # mat_tree.links.new(
-        #     scale_node.outputs["Vector"],
-        #     math_node.inputs[0]
-        # )
-
-        
-
-        # View dependence
-        # geometry_node = mat_tree.nodes.new('ShaderNodeNewGeometry')
-
-        # dot_node = mat_tree.nodes.new('ShaderNodeVectorMath')
-        # dot_node.operation = 'DOT_PRODUCT'
-
-        # mat_tree.links.new(
-        #     geometry_node.outputs["Normal"],
-        #     dot_node.inputs[0]
-        # )
-
-        # mat_tree.links.new(
-        #     geometry_node.outputs["Incoming"],
-        #     dot_node.inputs[1]
-        # )
-
-        # maximum_node = mat_tree.nodes.new('ShaderNodeMath')
-        # maximum_node.operation = 'MAXIMUM'
-        # maximum_node.inputs[1].default_value = 0.4
-
-        # mat_tree.links.new(
-        #     dot_node.outputs["Value"],
-        #     maximum_node.inputs[0]
-        # )
-
-        # scale_node = mat_tree.nodes.new('ShaderNodeVectorMath')
-        # scale_node.operation = 'SCALE'
-
-        # mat_tree.links.new(
-        #     math_node.outputs["Vector"],
-        #     scale_node.inputs[0]
-        # )
-
-        # mat_tree.links.new(
-        #     maximum_node.outputs["Value"],
-        #     scale_node.inputs["Scale"]
-        # )
-
-        # mat_tree.links.new(
-        #     scale_node.outputs["Vector"],
-        #     principled_node.inputs["Emission"]
-        # )
-
-        # Opacity
-
-        # greater_than_node = mat_tree.nodes.new('ShaderNodeMath')
-        # greater_than_node.operation = 'GREATER_THAN'
-        # greater_than_node.inputs[1].default_value = 0.2
-
-        # mat_tree.links.new(
-        #     opacity_attr_node.outputs["Fac"],
-        #     greater_than_node.inputs[0]
-        # )
-
-        # add_node = mat_tree.nodes.new('ShaderNodeMath')
-        # add_node.operation = 'ADD'
-        # add_node.use_clamp = True
-        # add_node.inputs[1].default_value = 0.05
-
-        # mat_tree.links.new(
-        #     greater_than_node.outputs["Value"],
-        #     add_node.inputs[0]
-        # )
-
-
-        # mat_tree.links.new(
-        #     add_node.outputs["Value"],
-        #     principled_node.inputs["Alpha"]
-        # )
 
         
         mat_tree.links.new(
