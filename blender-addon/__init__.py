@@ -735,6 +735,12 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         mesh_to_points_node = geo_tree.nodes.new('GeometryNodeMeshToPoints')
         mesh_to_points_node.location = (200, 0)
+        mesh_to_points_node.inputs["Radius"].default_value = 0.01
+
+        random_value_node = geo_tree.nodes.new('GeometryNodeRandomValue')
+        random_value_node.location = (0, 400)
+        random_value_node.inputs["Probability"].default_value = 0.5
+        random_value_node.data_type = 'BOOLEAN'
 
         ico_node = geo_tree.nodes.new('GeometryNodeMeshIcoSphere')
         ico_node.location = (200, 200)
@@ -757,6 +763,11 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         geo_tree.links.new(
             group_input_node.outputs["Geometry"],
             mesh_to_points_node.inputs["Mesh"]
+        )
+
+        geo_tree.links.new(
+            random_value_node.outputs["Value"],
+            mesh_to_points_node.inputs["Selection"]
         )
 
         geo_tree.links.new(
