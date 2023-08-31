@@ -178,9 +178,10 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         obj = bpy.data.objects.new("GaussianSplatting", mesh)
         bpy.context.collection.objects.link(obj)
-
         bpy.context.view_layer.objects.active = obj
         obj.select_set(True)
+
+        obj["gaussian_splatting"] = True
 
 
         ##############################
@@ -834,7 +835,7 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
 class SimplePLYProperties(bpy.types.PropertyGroup):
     """Group of properties representing ply data"""
-    display_percentage: bpy.props.FloatProperty(name="Display Percentage", default=100.0, min=0.0, max=100.0)
+    display_percentage: bpy.props.FloatProperty(name="Display Percentage", default=50.0, min=0.0, max=100.0)
 
 
 class GaussianSplattingPanel(bpy.types.Panel):
@@ -856,9 +857,10 @@ class GaussianSplattingPanel(bpy.types.Panel):
         row = layout.row()
         row.operator(OBJECT_OT_ImportGaussianSplatting.bl_idname, text="Import Gaussian Splatting").filepath = context.scene.ply_file_path
 
-        if obj is not None:
+        if obj is not None and "gaussian_splatting" in obj:
             row = layout.row()
-            row.prop(obj.ply_props, "display_percentage", text="Display Percentage")
+
+            row.prop(obj.modifiers["GeometryNodes"].node_group.nodes.get("Random Value").inputs["Probability"], "default_value", text="Display Percentage")
 
 
 def register():
