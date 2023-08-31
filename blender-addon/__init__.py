@@ -737,7 +737,7 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         mesh_to_points_node.location = (200, 0)
         mesh_to_points_node.inputs["Radius"].default_value = 0.01
 
-        random_value_node = geo_tree.nodes.new('GeometryNodeRandomValue')
+        random_value_node = geo_tree.nodes.new('FunctionNodeRandomValue')
         random_value_node.location = (0, 400)
         random_value_node.inputs["Probability"].default_value = 0.5
         random_value_node.data_type = 'BOOLEAN'
@@ -831,6 +831,12 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         return {'FINISHED'}
 
+
+class SimplePLYProperties(bpy.types.PropertyGroup):
+    """Group of properties representing ply data"""
+    display_percentage: bpy.props.FloatProperty(name="Display Percentage", default=100.0, min=0.0, max=100.0)
+
+
 class GaussianSplattingPanel(bpy.types.Panel):
     
     bl_space_type = "VIEW_3D"
@@ -841,6 +847,7 @@ class GaussianSplattingPanel(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
+        obj = context.active_object
 
         # Filepath input
         layout.prop(context.scene, "ply_file_path", text="PLY Filepath")
@@ -849,19 +856,27 @@ class GaussianSplattingPanel(bpy.types.Panel):
         row = layout.row()
         row.operator(OBJECT_OT_ImportGaussianSplatting.bl_idname, text="Import Gaussian Splatting").filepath = context.scene.ply_file_path
 
+        if obj is not None:
+            row = layout.row()
+            row.prop(obj.ply_props, "display_percentage", text="Display Percentage")
+
 
 def register():
     bpy.utils.register_class(OBJECT_OT_ImportGaussianSplatting)
     bpy.utils.register_class(GaussianSplattingPanel)
     bpy.utils.register_class(OBJECT_OT_AddTenCircles)
+    bpy.utils.register_class(SimplePLYProperties)
 
     bpy.types.Scene.ply_file_path = bpy.props.StringProperty(name="PLY Filepath", subtype='FILE_PATH')
+    bpy.types.Object.ply_props = bpy.props.PointerProperty(type=SimplePLYProperties)
 
 def unregister():
     bpy.utils.unregister_class(OBJECT_OT_ImportGaussianSplatting)
     bpy.utils.unregister_class(GaussianSplattingPanel)
     bpy.utils.unregister_class(OBJECT_OT_AddTenCircles)
+    bpy.utils.unregister_class(SimplePLYProperties)
 
+    del bpy.types.Object.ply_props
     del bpy.types.Scene.ply_file_path
 
 if __name__ == "__main__":
