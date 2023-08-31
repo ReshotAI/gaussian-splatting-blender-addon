@@ -137,8 +137,11 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         bpy.context.view_layer.objects.active = obj
         obj.select_set(True)
 
+        obj.rotation_mode = 'XYZ'
+        obj.rotation_euler = (-np.pi / 2, 0, 0)
+
         obj["gaussian_splatting"] = True
-        
+
 
         ##############################
         # Materials
@@ -667,9 +670,46 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
             principled_node.inputs["Emission"]
         )
 
-        
+
+        geometry_node = mat_tree.nodes.new('ShaderNodeNewGeometry')
+
+        vector_math_node = mat_tree.nodes.new('ShaderNodeVectorMath')
+        vector_math_node.operation = 'DOT_PRODUCT'
+
+        mat_tree.links.new(
+            geometry_node.outputs["Incoming"],
+            vector_math_node.inputs[0]
+        )
+
+        mat_tree.links.new(
+            geometry_node.outputs["Normal"],
+            vector_math_node.inputs[1]
+        )
+
+        math_node = mat_tree.nodes.new('ShaderNodeMath')
+        math_node.operation = 'MULTIPLY'
+
         mat_tree.links.new(
             opacity_attr_node.outputs["Fac"],
+            math_node.inputs[0]
+        )
+
+        mat_tree.links.new(
+            vector_math_node.outputs["Value"],
+            math_node.inputs[1]
+        )
+
+        power_node = mat_tree.nodes.new('ShaderNodeMath')
+        power_node.operation = 'POWER'
+        power_node.inputs[1].default_value = 3
+
+        mat_tree.links.new(
+            math_node.outputs["Value"],
+            power_node.inputs[0]
+        )
+
+        mat_tree.links.new(
+            power_node.outputs["Value"],
             principled_node.inputs["Alpha"]
         )
 
