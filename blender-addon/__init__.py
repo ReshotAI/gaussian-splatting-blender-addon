@@ -77,8 +77,6 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         bpy.context.preferences.addons['cycles'].preferences.compute_device_type = 'OPTIX'  # TODO: check if OPTIX is available
         bpy.context.scene.cycles.device = 'GPU'  # TODO: check if GPU is available
 
-        bpy.context.scene.display_settings.display_device = 'None'
-
         ##############################
         # Load PLY
         ##############################
@@ -692,6 +690,9 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         math_node.operation = 'ADD'
         math_node.inputs[1].default_value = (0.5, 0.5, 0.5)
 
+        gamma_node = mat_tree.nodes.new('ShaderNodeGamma')
+        gamma_node.inputs["Gamma"].default_value = 2.2
+
 
         mat_tree.links.new(
             add_node.outputs["Vector"],
@@ -700,6 +701,11 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         mat_tree.links.new(
             math_node.outputs["Vector"],
+            gamma_node.inputs["Color"]
+        )
+
+        mat_tree.links.new(
+            gamma_node.outputs["Color"],
             principled_node.inputs["Emission"]
         )
 
@@ -767,7 +773,7 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         )
 
         geo_tree.links.new(
-            random_value_node.outputs["Value"],
+            random_value_node.outputs[3],
             mesh_to_points_node.inputs["Selection"]
         )
 
