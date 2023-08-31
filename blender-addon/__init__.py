@@ -28,29 +28,6 @@ class OBJECT_OT_AddTenCircles(bpy.types.Operator):
         return {'FINISHED'}
 
 
-def quatToMat3(quat):
-    qx = quat[1]
-    qy = quat[2]
-    qz = quat[3]
-    qw = quat[0]
-
-    qxx = qx * qx
-    qyy = qy * qy
-    qzz = qz * qz
-    qxz = qx * qz
-    qxy = qx * qy
-    qyw = qy * qw
-    qzw = qz * qw
-    qyz = qy * qz
-    qxw = qx * qw
-
-    return np.array([
-        [1.0 - 2.0 * (qyy + qzz), 2.0 * (qxy - qzw), 2.0 * (qxz + qyw)],
-        [2.0 * (qxy + qzw), 1.0 - 2.0 * (qxx + qzz), 2.0 * (qyz - qxw)],
-        [2.0 * (qxz - qyw), 2.0 * (qyz + qxw), 1.0 - 2.0 * (qxx + qyy)]
-    ])
-
-
 class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
     bl_idname = "object.import_gaussian_splatting"
     bl_label = "Import Gaussian Splatting"
@@ -74,20 +51,18 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         
         bpy.context.scene.render.engine = 'CYCLES'
 
-        # bpy.context.preferences.addons['cycles'].preferences.compute_device_type = 'OPTIX'  # TODO: check if OPTIX is available
+        # bpy.context.preferences.addons['cycles'].preferences.compute_device_type = 'OPTIX'
 
         if context.preferences.addons["cycles"].preferences.has_active_device():
             bpy.context.scene.cycles.device = 'GPU'
+
+        bpy.context.scene.cycles.transparent_max_bounces = 16
 
         ##############################
         # Load PLY
         ##############################
 
         plydata = PlyData.read(self.filepath)
-
-        # xyz = np.stack((np.asarray(plydata.elements[0]["z"]),
-        #                 -np.asarray(plydata.elements[0]["x"]),
-        #                 -np.asarray(plydata.elements[0]["y"])), axis=1)
 
         xyz = np.stack((np.asarray(plydata.elements[0]["x"]),
                         np.asarray(plydata.elements[0]["y"]),
@@ -109,42 +84,23 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
             features_extra[:, idx] = np.asarray(plydata.elements[0][attr_name])
         # Reshape (P,F*SH_coeffs) to (P, F, SH_coeffs except DC)
         features_extra = features_extra.reshape((features_extra.shape[0], 3, 15))
-        
-        # scales = np.stack((np.asarray(plydata.elements[0]["scale_2"]),
-        #                    np.asarray(plydata.elements[0]["scale_0"]),
-        #                    np.asarray(plydata.elements[0]["scale_1"])), axis=1)
 
         scales = np.stack((np.asarray(plydata.elements[0]["scale_0"]),
                            np.asarray(plydata.elements[0]["scale_1"]),
                            np.asarray(plydata.elements[0]["scale_2"])), axis=1)
 
         scales = np.exp(scales)
-
-        # rots = np.stack((np.asarray(plydata.elements[0]["rot_2"]),
-        #                  -np.asarray(plydata.elements[0]["rot_0"]),
-        #                  -np.asarray(plydata.elements[0]["rot_1"]),
-        #                  np.asarray(plydata.elements[0]["rot_3"])), axis=1)
         
         quats = np.stack((np.asarray(plydata.elements[0]["rot_0"]),
                           np.asarray(plydata.elements[0]["rot_1"]),
                           np.asarray(plydata.elements[0]["rot_2"]),
                           np.asarray(plydata.elements[0]["rot_3"])), axis=1)
 
-        # Normalize quaternion
-        # rots = rots / np.linalg.norm(rots, axis=1, keepdims=True)
-
-        # convert to Euler
-        print(quats.shape)
-
         rots_euler = np.zeros((quats.shape[0], 3))
 
         for i in range(quats.shape[0]):
-            # rot = quatToMat3(quats[i])
-
             quat = mathutils.Quaternion(quats[i])
             euler = quat.to_euler()
-
-
             rots_euler[i] = (euler.x, euler.y, euler.z)
 
         ##############################
@@ -182,7 +138,7 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         obj.select_set(True)
 
         obj["gaussian_splatting"] = True
-
+        
 
         ##############################
         # Materials
