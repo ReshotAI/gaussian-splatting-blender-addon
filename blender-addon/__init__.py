@@ -2,7 +2,7 @@ bl_info = {
     "name": "Gaussian Splatting Importer",
     "author": "Alex Carlier",
     "version": (0, 0, 1),
-    "blender": (2, 80, 0),
+    "blender": (3, 4, 0),
     "location": "3D Viewport > Sidebar > Gaussian Splatting",
     "description": "Import Gaussian Splatting scenes",
 }
@@ -74,8 +74,10 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         
         bpy.context.scene.render.engine = 'CYCLES'
 
-        bpy.context.preferences.addons['cycles'].preferences.compute_device_type = 'OPTIX'  # TODO: check if OPTIX is available
-        bpy.context.scene.cycles.device = 'GPU'  # TODO: check if GPU is available
+        # bpy.context.preferences.addons['cycles'].preferences.compute_device_type = 'OPTIX'  # TODO: check if OPTIX is available
+
+        if context.preferences.addons["cycles"].preferences.has_active_device():
+            bpy.context.scene.cycles.device = 'GPU'
 
         ##############################
         # Load PLY
@@ -839,11 +841,6 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class SimplePLYProperties(bpy.types.PropertyGroup):
-    """Group of properties representing ply data"""
-    display_percentage: bpy.props.FloatProperty(name="Display Percentage", default=50.0, min=0.0, max=100.0)
-
-
 class GaussianSplattingPanel(bpy.types.Panel):
     
     bl_space_type = "VIEW_3D"
@@ -873,18 +870,14 @@ def register():
     bpy.utils.register_class(OBJECT_OT_ImportGaussianSplatting)
     bpy.utils.register_class(GaussianSplattingPanel)
     bpy.utils.register_class(OBJECT_OT_AddTenCircles)
-    bpy.utils.register_class(SimplePLYProperties)
 
     bpy.types.Scene.ply_file_path = bpy.props.StringProperty(name="PLY Filepath", subtype='FILE_PATH')
-    bpy.types.Object.ply_props = bpy.props.PointerProperty(type=SimplePLYProperties)
 
 def unregister():
     bpy.utils.unregister_class(OBJECT_OT_ImportGaussianSplatting)
     bpy.utils.unregister_class(GaussianSplattingPanel)
     bpy.utils.unregister_class(OBJECT_OT_AddTenCircles)
-    bpy.utils.unregister_class(SimplePLYProperties)
 
-    del bpy.types.Object.ply_props
     del bpy.types.Scene.ply_file_path
 
 if __name__ == "__main__":
