@@ -980,7 +980,7 @@ class ExportPLY(bpy.types.Operator):
 
             f_dc[i] = sh0_attr.data[i].vector.to_tuple()
             for j in range(15):
-                f_rest[i, j*3:(j+1)*3] = sh_attrs[j].data[i].vector.to_tuple()
+                f_rest[i, j:j+45:15] = sh_attrs[j].data[i].vector.to_tuple()
             
             quat = rot_quat_attr.data[i].color
             rotation[i] = (quat[0], quat[1], quat[2], quat[3])
