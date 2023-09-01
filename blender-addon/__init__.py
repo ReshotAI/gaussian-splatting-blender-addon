@@ -726,17 +726,8 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
             math_node.inputs[1]
         )
 
-        power_node = mat_tree.nodes.new('ShaderNodeMath')
-        power_node.operation = 'POWER'
-        power_node.inputs[1].default_value = 3
-
         mat_tree.links.new(
             math_node.outputs["Value"],
-            power_node.inputs[0]
-        )
-
-        mat_tree.links.new(
-            power_node.outputs["Value"],
             principled_node.inputs["Alpha"]
         )
 
@@ -800,6 +791,10 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         group_output_node = geo_tree.nodes.new('NodeGroupOutput')
         group_output_node.location = (1000, 0)
 
+        set_point_radius_node = geo_tree.nodes.new('GeometryNodeSetPointRadius')
+        set_point_radius_node.location = (200, 400)
+
+
         geo_tree.links.new(
             group_input_node.outputs["Geometry"],
             mesh_to_points_node.inputs["Mesh"]
@@ -831,7 +826,12 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         )
 
         geo_tree.links.new(
-            set_shade_smooth_node.outputs["Geometry"],
+            mesh_to_points_node.outputs["Points"],
+            set_point_radius_node.inputs["Points"]
+        )
+
+        geo_tree.links.new(
+            set_point_radius_node.outputs["Points"],
             switch_node.inputs[15]
         )
 
@@ -869,6 +869,11 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         geo_tree.links.new(
             scale_node.outputs["Vector"],
             instance_node.inputs["Scale"]
+        )
+
+        geo_tree.links.new(
+            scale_node.outputs["Vector"],
+            set_point_radius_node.inputs["Radius"]
         )
 
         # Rotation
