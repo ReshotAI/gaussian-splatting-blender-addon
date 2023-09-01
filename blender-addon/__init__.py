@@ -978,7 +978,11 @@ class ExportPLY(bpy.types.Operator):
             for j in range(15):
                 f_rest[i, j*3:(j+1)*3] = sh_attrs[j].data[i].vector.to_tuple()
             
-            rotation[i] = rot_euler_attr.data[i].vector.to_tuple()
+            euler = mathutils.Euler(rot_euler_attr.data[i].vector)
+            quat = euler.to_quaternion()
+            rotation[i] = (quat.x, quat.y, quat.z, quat.w)
+
+            
 
         # xyz = self._xyz.detach().cpu().numpy()
         # normals = np.zeros_like(xyz)
@@ -988,7 +992,7 @@ class ExportPLY(bpy.types.Operator):
         # scale = self._scaling.detach().cpu().numpy()
         # rotation = self._rotation.detach().cpu().numpy()
 
-        dtype_full = [(attribute, 'f4') for attribute in construct_list_of_attributes]
+        dtype_full = [(attribute, 'f4') for attribute in construct_list_of_attributes()]
 
         elements = np.empty(N, dtype=dtype_full)
         attributes = np.concatenate((xyz, normals, f_dc, f_rest, opacities, scale, rotation), axis=1)
