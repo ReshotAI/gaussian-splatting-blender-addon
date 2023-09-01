@@ -765,6 +765,10 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         random_value_node.inputs["Probability"].default_value = RECOMMENDED_MAX_GAUSSIANS / N
         random_value_node.data_type = 'BOOLEAN'
 
+        maximum_node = geo_tree.nodes.new('ShaderNodeMath')
+        maximum_node.location = (0, 400)
+        maximum_node.operation = 'MAXIMUM'
+
         is_point_cloud_node = geo_tree.nodes.new('FunctionNodeInputBool')
         is_point_cloud_node.location = (0, 600)
         is_point_cloud_node.boolean = True
@@ -801,7 +805,17 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         )
 
         geo_tree.links.new(
+            is_point_cloud_node.outputs["Boolean"],
+            maximum_node.inputs[0]
+        )
+
+        geo_tree.links.new(
             random_value_node.outputs[3],
+            maximum_node.inputs[1]
+        )
+
+        geo_tree.links.new(
+            maximum_node.outputs["Value"],
             mesh_to_points_node.inputs["Selection"]
         )
 
