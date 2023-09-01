@@ -915,6 +915,97 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         return {'FINISHED'}
 
 
+
+def construct_list_of_attributes():
+        l = ['x', 'y', 'z', 'nx', 'ny', 'nz']
+        # All channels except the 3 DC
+        for i in range(3):
+            l.append('f_dc_{}'.format(i))
+        for i in range(45):
+            l.append('f_rest_{}'.format(i))
+        l.append('opacity')
+        for i in range(3):
+            l.append('scale_{}'.format(i))
+        for i in range(4):
+            l.append('rot_{}'.format(i))
+        return l
+
+class ExportPLY(bpy.types.Operator):
+    bl_idname = "export.ply_pointcloud"
+    bl_label = "Export PLY Point Cloud"
+    
+    filepath: bpy.props.StringProperty(subtype="FILE_PATH")
+    
+
+
+    def execute(self, context):
+        if not self.filepath.lower().endswith('.ply'):
+            self.filepath += ".ply"
+
+        obj = context.active_object
+
+        if obj is None or "gaussian_splatting" not in obj:
+            self.report({'WARNING'}, "No Gaussian Splatting selected")
+            return {'CANCELLED'}
+
+        mesh: bpy.types.Mesh = obj.data
+
+        N = len(mesh.vertices)
+
+        print("N", N)
+        
+        xyz = np.zeros((N, 3))
+        normals = np.zeros((N, 3))
+        f_dc = np.zeros((N, 3))
+        f_rest = np.zeros((N, 45))
+        opacities = np.zeros((N, 1))
+        scale = np.zeros((N, 3))
+        rotation = np.zeros((N, 4))
+
+        position_attr = mesh.attributes.get("position")
+        opacity_attr = mesh.attributes.get("opacity")
+        scale_attr = mesh.attributes.get("scale")
+        sh0_attr = mesh.attributes.get("sh0")
+        sh_attrs = [mesh.attributes.get(f"sh{j+1}") for j in range(15)]
+        rot_euler_attr = mesh.attributes.get("rot_euler")
+
+        for i, v in enumerate(mesh.vertices):
+            xyz[i] = position_attr.data[i].vector.to_tuple()
+            opacities[i] = opacity_attr.data[i].value
+            scale[i] = scale_attr.data[i].vector.to_tuple()
+
+            f_dc[i] = sh0_attr.data[i].vector.to_tuple()
+            for j in range(15):
+                f_rest[i, j*3:(j+1)*3] = sh_attrs[j].data[i].vector.to_tuple()
+            
+            rotation[i] = rot_euler_attr.data[i].vector.to_tuple()
+
+        # xyz = self._xyz.detach().cpu().numpy()
+        # normals = np.zeros_like(xyz)
+        # f_dc = self._features_dc.detach().transpose(1, 2).flatten(start_dim=1).contiguous().cpu().numpy()
+        # f_rest = self._features_rest.detach().transpose(1, 2).flatten(start_dim=1).contiguous().cpu().numpy()
+        # opacities = self._opacity.detach().cpu().numpy()
+        # scale = self._scaling.detach().cpu().numpy()
+        # rotation = self._rotation.detach().cpu().numpy()
+
+        dtype_full = [(attribute, 'f4') for attribute in construct_list_of_attributes]
+
+        elements = np.empty(N, dtype=dtype_full)
+        attributes = np.concatenate((xyz, normals, f_dc, f_rest, opacities, scale, rotation), axis=1)
+        elements[:] = list(map(tuple, attributes))
+        el = PlyElement.describe(elements, 'vertex')
+        PlyData([el]).write(self.filepath)
+        
+        return {'FINISHED'}
+    
+    def invoke(self, context, event):
+        if not self.filepath:
+            self.filepath = bpy.path.abspath("//untitled.ply")
+
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+
+
 class GaussianSplattingPanel(bpy.types.Panel):
     
     bl_space_type = "VIEW_3D"
@@ -937,16 +1028,21 @@ class GaussianSplattingPanel(bpy.types.Panel):
         if obj is not None and "gaussian_splatting" in obj:
             
             row = layout.row()
-            row.prop(obj.modifiers["GeometryNodes"].node_group.nodes.get("Boolean"), "boolean", text="As point cloud")
+            row.prop(obj.modifiers["GeometryNodes"].node_group.nodes.get("Boolean"), "boolean", text="As point cloud (faster)")
 
             if not obj.modifiers["GeometryNodes"].node_group.nodes.get("Boolean").boolean:
                 row = layout.row()
                 row.prop(obj.modifiers["GeometryNodes"].node_group.nodes.get("Random Value").inputs["Probability"], "default_value", text="Display Percentage")
+        
+        # Export Gaussian Splatting button
+        row = layout.row()
+        row.operator(ExportPLY.bl_idname, text="Export Gaussian Splatting")
 
 def register():
     bpy.utils.register_class(OBJECT_OT_ImportGaussianSplatting)
     bpy.utils.register_class(GaussianSplattingPanel)
     bpy.utils.register_class(OBJECT_OT_AddTenCircles)
+    bpy.utils.register_class(ExportPLY)
 
     bpy.types.Scene.ply_file_path = bpy.props.StringProperty(name="PLY Filepath", subtype='FILE_PATH')
 
@@ -954,6 +1050,7 @@ def unregister():
     bpy.utils.unregister_class(OBJECT_OT_ImportGaussianSplatting)
     bpy.utils.unregister_class(GaussianSplattingPanel)
     bpy.utils.unregister_class(OBJECT_OT_AddTenCircles)
+    bpy.utils.unregister_class(ExportPLY)
 
     del bpy.types.Scene.ply_file_path
 
