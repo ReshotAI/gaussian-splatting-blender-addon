@@ -72,8 +72,8 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
     
         N = len(xyz)
         
-        opacities = np.asarray(plydata.elements[0]["opacity"])[..., np.newaxis]
-        opacities = 1 / (1 + np.exp(-opacities))
+        log_opacities = np.asarray(plydata.elements[0]["opacity"])[..., np.newaxis]
+        opacities = 1 / (1 + np.exp(-log_opacities))
 
         features_dc = np.zeros((N, 3, 1))
         features_dc[:, 0, 0] = np.asarray(plydata.elements[0]["f_dc_0"])
@@ -89,11 +89,11 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         # Reshape (P,F*SH_coeffs) to (P, F, SH_coeffs except DC)
         features_extra = features_extra.reshape((N, 3, 15))
 
-        scales = np.stack((np.asarray(plydata.elements[0]["scale_0"]),
+        log_scales = np.stack((np.asarray(plydata.elements[0]["scale_0"]),
                            np.asarray(plydata.elements[0]["scale_1"]),
                            np.asarray(plydata.elements[0]["scale_2"])), axis=1)
 
-        scales = np.exp(scales)
+        scales = np.exp(log_scales)
         
         quats = np.stack((np.asarray(plydata.elements[0]["rot_0"]),
                           np.asarray(plydata.elements[0]["rot_1"]),
@@ -115,12 +115,16 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         mesh.from_pydata(xyz.tolist(), [], [])
         mesh.update()
 
+        log_opacity_attr = mesh.attributes.new(name="log_opacity", type='FLOAT', domain='POINT')
         opacity_attr = mesh.attributes.new(name="opacity", type='FLOAT', domain='POINT')
         for i, _ in enumerate(mesh.vertices):
+            log_opacity_attr.data[i].value = log_opacities[i]
             opacity_attr.data[i].value = opacities[i]
 
+        log_scale_attr = mesh.attributes.new(name="log_scale", type='FLOAT_VECTOR', domain='POINT')
         scale_attr = mesh.attributes.new(name="scale", type='FLOAT_VECTOR', domain='POINT')
         for i, _ in enumerate(mesh.vertices):
+            log_scale_attr.data[i].vector = log_scales[i]
             scale_attr.data[i].vector = scales[i]
         
         sh0_attr = mesh.attributes.new(name="sh0", type='FLOAT_VECTOR', domain='POINT')
@@ -134,7 +138,8 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         rot_quat_attr = mesh.attributes.new(name="rot_quat", type='FLOAT_COLOR', domain='POINT')
         for i, _ in enumerate(mesh.vertices):
-            rot_quat_attr.data[i].color = quats[i]
+            for j in range(4):
+                rot_quat_attr.data[i][j] = quats[i][j]
 
         rot_euler_attr = mesh.attributes.new(name="rot_euler", type='FLOAT_VECTOR', domain='POINT')
         for i, _ in enumerate(mesh.vertices):
@@ -967,16 +972,16 @@ class ExportPLY(bpy.types.Operator):
         rotation = np.zeros((N, 4))
 
         position_attr = mesh.attributes.get("position")
-        opacity_attr = mesh.attributes.get("opacity")
-        scale_attr = mesh.attributes.get("scale")
+        log_opacity_attr = mesh.attributes.get("log_opacity")
+        log_scale_attr = mesh.attributes.get("log_scale")
         sh0_attr = mesh.attributes.get("sh0")
         sh_attrs = [mesh.attributes.get(f"sh{j+1}") for j in range(15)]
         rot_quat_attr = mesh.attributes.get("rot_quat")
 
         for i, _ in enumerate(mesh.vertices):
             xyz[i] = position_attr.data[i].vector.to_tuple()
-            opacities[i] = opacity_attr.data[i].value
-            scale[i] = scale_attr.data[i].vector.to_tuple()
+            opacities[i] = log_opacity_attr.data[i].value
+            scale[i] = log_scale_attr.data[i].vector.to_tuple()
 
             f_dc[i] = sh0_attr.data[i].vector.to_tuple()
             for j in range(15):
@@ -989,8 +994,8 @@ class ExportPLY(bpy.types.Operator):
             # quat = euler.to_quaternion()
             # rotation[i] = (quat.x, quat.y, quat.z, quat.w)
 
-        opacities = np.log(opacities / (1 - opacities))
-        scale = np.log(scale)
+        # opacities = np.log(opacities / (1 - opacities))
+        # scale = np.log(scale)
 
         dtype_full = [(attribute, 'f4') for attribute in construct_list_of_attributes()]
 
