@@ -176,20 +176,20 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
         for j in range(0, 16):
             sh_inst_attr_node = mat_tree.nodes.new('ShaderNodeAttribute')
-            sh_inst_attr_node.location = (1400, 200 * j)
+            sh_inst_attr_node.location = (1800, 200 * j)
             sh_inst_attr_node.attribute_name = f"sh{j}"
             sh_inst_attr_node.attribute_type = 'INSTANCER'
             sh_inst_attr_nodes.append(sh_inst_attr_node)
             
             sh_geom_attr_node = mat_tree.nodes.new('ShaderNodeAttribute')
-            sh_geom_attr_node.location = (1400, 200 * j)
+            sh_geom_attr_node.location = (1800, 200 * j)
             sh_geom_attr_node.attribute_name = f"sh{j}"
             sh_geom_attr_node.attribute_type = 'GEOMETRY'
             sh_geom_attr_nodes.append(sh_geom_attr_node)
 
             vector_math_node = mat_tree.nodes.new('ShaderNodeVectorMath')
             vector_math_node.operation = 'ADD'
-            vector_math_node.location = (1600, 200 * j)
+            vector_math_node.location = (2000, 200 * j)
 
             mat_tree.links.new(
                 sh_inst_attr_node.outputs["Vector"],
@@ -210,19 +210,38 @@ class ImportGaussianSplatting(bpy.types.Operator):
         position_attr_node.attribute_type = 'GEOMETRY'
         position_attr_node.location = (0, 0)
 
-        opacity_attr_node = mat_tree.nodes.new('ShaderNodeAttribute')
-        opacity_attr_node.location = (2400, -200)
-        opacity_attr_node.attribute_name = "opacity"
-        opacity_attr_node.attribute_type = 'GEOMETRY'
+        opacity_geom_attr_node = mat_tree.nodes.new('ShaderNodeAttribute')
+        opacity_geom_attr_node.location = (2800, -200)
+        opacity_geom_attr_node.attribute_name = "opacity"
+        opacity_geom_attr_node.attribute_type = 'GEOMETRY'
+
+        opacity_inst_attr_node = mat_tree.nodes.new('ShaderNodeAttribute')
+        opacity_inst_attr_node.location = (2800, -200)
+        opacity_inst_attr_node.attribute_name = "opacity"
+        opacity_inst_attr_node.attribute_type = 'INSTANCER'
+
+        opacity_attr_node = mat_tree.nodes.new('ShaderNodeMath')
+        opacity_attr_node.operation = 'ADD'
+        opacity_attr_node.location = (2800, -200)
+
+        mat_tree.links.new(
+            opacity_geom_attr_node.outputs["Value"],
+            opacity_attr_node.inputs[0]
+        )
+
+        mat_tree.links.new(
+            opacity_inst_attr_node.outputs["Value"],
+            opacity_attr_node.inputs[1]
+        )
 
         principled_node = mat_tree.nodes.new('ShaderNodeBsdfPrincipled')
-        principled_node.location = (2800, 600)
+        principled_node.location = (3200, 600)
         principled_node.inputs["Base Color"].default_value = (0, 0, 0, 1)
         principled_node.inputs["Specular"].default_value = 0
         principled_node.inputs["Roughness"].default_value = 0
 
         output_node = mat_tree.nodes.new('ShaderNodeOutputMaterial')
-        output_node.location = (3200, 0)
+        output_node.location = (3600, 0)
 
         # Camera location
         combine_xyz_node = mat_tree.nodes.new('ShaderNodeCombineXYZ')
@@ -384,7 +403,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
         scale_node_0 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_0.operation = 'SCALE'
         scale_node_0.inputs["Scale"].default_value = C0
-        scale_node_0.location = (2000, 200)
+        scale_node_0.location = (2400, 200)
 
         mat_tree.links.new(
             sh[0],
@@ -396,7 +415,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
         math_node = mat_tree.nodes.new('ShaderNodeMath')
         math_node.operation = 'MULTIPLY'
         math_node.inputs[1].default_value = -C1
-        math_node.location = (1800, 400)
+        math_node.location = (2200, 400)
 
         mat_tree.links.new(
             y,
@@ -405,7 +424,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
         scale_node_1 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_1.operation = 'SCALE'
-        scale_node_1.location = (2000, 400)
+        scale_node_1.location = (2400, 400)
 
         mat_tree.links.new(
             sh[1],
@@ -422,7 +441,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
         math_node = mat_tree.nodes.new('ShaderNodeMath')
         math_node.operation = 'MULTIPLY'
         math_node.inputs[1].default_value = C1
-        math_node.location = (1800, 600)
+        math_node.location = (2200, 600)
 
         mat_tree.links.new(
             z,
@@ -431,7 +450,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
         scale_node_2 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_2.operation = 'SCALE'
-        scale_node_2.location = (2000, 600)
+        scale_node_2.location = (2400, 600)
 
         mat_tree.links.new(
             sh[2],
@@ -449,7 +468,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
         math_node = mat_tree.nodes.new('ShaderNodeMath')
         math_node.operation = 'MULTIPLY'
         math_node.inputs[1].default_value = -C1
-        math_node.location = (1800, 800)
+        math_node.location = (2200, 800)
 
         mat_tree.links.new(
             x,
@@ -458,7 +477,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
         scale_node_3 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_3.operation = 'SCALE'
-        scale_node_3.location = (2000, 800)
+        scale_node_3.location = (2400, 800)
 
         mat_tree.links.new(
             sh[3],
@@ -475,7 +494,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
         math_node = mat_tree.nodes.new('ShaderNodeMath')
         math_node.operation = 'MULTIPLY'
         math_node.inputs[1].default_value = C2[0]
-        math_node.location = (1800, 1000)
+        math_node.location = (2200, 1000)
 
         mat_tree.links.new(
             xy,
@@ -484,7 +503,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
         scale_node_4 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_4.operation = 'SCALE'
-        scale_node_4.location = (2000, 1000)
+        scale_node_4.location = (2400, 1000)
 
         mat_tree.links.new(
             sh[4],
@@ -501,7 +520,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
         math_node = mat_tree.nodes.new('ShaderNodeMath')
         math_node.operation = 'MULTIPLY'
         math_node.inputs[1].default_value = C2[1]
-        math_node.location = (1800, 1200)
+        math_node.location = (2200, 1200)
 
         mat_tree.links.new(
             yz,
@@ -510,7 +529,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
         scale_node_5 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_5.operation = 'SCALE'
-        scale_node_5.location = (2000, 1200)
+        scale_node_5.location = (2400, 1200)
 
         mat_tree.links.new(
             sh[5],
@@ -527,7 +546,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
         math_node1 = mat_tree.nodes.new('ShaderNodeMath')
         math_node1.operation = 'MULTIPLY'
         math_node1.inputs[1].default_value = C2[2]
-        math_node1.location = (1800, 1400)
+        math_node1.location = (2200, 1400)
 
         mat_tree.links.new(
             zz,
@@ -536,7 +555,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
         math_node2 = mat_tree.nodes.new('ShaderNodeMath')
         math_node2.operation = 'SUBTRACT'
-        math_node2.location = (1800, 1400)
+        math_node2.location = (2200, 1400)
 
         mat_tree.links.new(
             math_node1.outputs["Value"],
@@ -550,7 +569,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
         math_node3 = mat_tree.nodes.new('ShaderNodeMath')
         math_node3.operation = 'SUBTRACT'
-        math_node3.location = (1800, 1400)
+        math_node3.location = (2200, 1400)
 
         mat_tree.links.new(
             math_node2.outputs["Value"],
@@ -565,7 +584,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
         math_node4 = mat_tree.nodes.new('ShaderNodeMath')
         math_node4.operation = 'MULTIPLY'
         math_node4.inputs[1].default_value = C2[1]
-        math_node4.location = (1800, 1400)
+        math_node4.location = (2200, 1400)
 
         mat_tree.links.new(
             math_node3.outputs["Value"],
@@ -574,7 +593,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
         scale_node_6 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_6.operation = 'SCALE'
-        scale_node_6.location = (2000, 1400)
+        scale_node_6.location = (2400, 1400)
 
         mat_tree.links.new(
             sh[6],
@@ -591,7 +610,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
         math_node = mat_tree.nodes.new('ShaderNodeMath')
         math_node.operation = 'MULTIPLY'
         math_node.inputs[1].default_value = C2[3]
-        math_node.location = (1800, 1600)
+        math_node.location = (2200, 1600)
 
         mat_tree.links.new(
             xz,
@@ -600,7 +619,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
         scale_node_7 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_7.operation = 'SCALE'
-        scale_node_7.location = (2000, 1600)
+        scale_node_7.location = (2400, 1600)
 
         mat_tree.links.new(
             sh[7],
@@ -616,7 +635,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
         math_node1 = mat_tree.nodes.new('ShaderNodeMath')
         math_node1.operation = 'SUBTRACT'
-        math_node1.location = (1800, 1800)
+        math_node1.location = (2200, 1800)
 
         mat_tree.links.new(
             xx,
@@ -631,7 +650,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
         math_node2 = mat_tree.nodes.new('ShaderNodeMath')
         math_node2.operation = 'MULTIPLY'
         math_node2.inputs[1].default_value = C2[4]
-        math_node2.location = (1800, 1800)
+        math_node2.location = (2200, 1800)
 
         mat_tree.links.new(
             math_node1.outputs["Value"],
@@ -640,7 +659,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
         scale_node_8 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_8.operation = 'SCALE'
-        scale_node_8.location = (2000, 1800)
+        scale_node_8.location = (2400, 1800)
 
         mat_tree.links.new(
             sh[8],
@@ -656,43 +675,43 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
         scale_node_9 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_9.operation = 'SCALE'
-        scale_node_9.location = (2000, 2000)
+        scale_node_9.location = (2400, 2000)
 
         # SH 10
 
         scale_node_10 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_10.operation = 'SCALE'
-        scale_node_10.location = (2000, 2200)
+        scale_node_10.location = (2400, 2200)
 
         # SH 11
 
         scale_node_11 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_11.operation = 'SCALE'
-        scale_node_11.location = (2000, 2400)
+        scale_node_11.location = (2400, 2400)
 
         # SH 12
 
         scale_node_12 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_12.operation = 'SCALE'
-        scale_node_12.location = (2000, 2600)
+        scale_node_12.location = (2400, 2600)
 
         # SH 13
 
         scale_node_13 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_13.operation = 'SCALE'
-        scale_node_13.location = (2000, 2800)
+        scale_node_13.location = (2400, 2800)
 
         # SH 14
 
         scale_node_14 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_14.operation = 'SCALE'
-        scale_node_14.location = (2000, 3000)
+        scale_node_14.location = (2400, 3000)
 
         # SH 15
 
         scale_node_15 = mat_tree.nodes.new('ShaderNodeVectorMath')
         scale_node_15.operation = 'SCALE'
-        scale_node_15.location = (2000, 3200)
+        scale_node_15.location = (2400, 3200)
 
 
         # Result
@@ -704,7 +723,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
         add_node = mat_tree.nodes.new('ShaderNodeVectorMath')
         add_node.operation = 'ADD'
-        add_node.location = (2200, 200)
+        add_node.location = (2600, 200)
 
         mat_tree.links.new(
             res_nodes[0].outputs["Vector"],
@@ -719,7 +738,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
         for i in range(2, 16):
             new_add_node = mat_tree.nodes.new('ShaderNodeVectorMath')
             new_add_node.operation = 'ADD'
-            new_add_node.location = (2200, 200 + i * 200)
+            new_add_node.location = (2600, 200 + i * 200)
 
             mat_tree.links.new(
                 res_nodes[i].outputs["Vector"],
@@ -736,11 +755,11 @@ class ImportGaussianSplatting(bpy.types.Operator):
         math_node = mat_tree.nodes.new('ShaderNodeVectorMath')
         math_node.operation = 'ADD'
         math_node.inputs[1].default_value = (0.5, 0.5, 0.5)
-        math_node.location = (2400, 200)
+        math_node.location = (2800, 200)
 
         gamma_node = mat_tree.nodes.new('ShaderNodeGamma')
         gamma_node.inputs["Gamma"].default_value = 2.2
-        gamma_node.location = (2600, 200)
+        gamma_node.location = (3000, 200)
 
         mat_tree.links.new(
             add_node.outputs["Vector"],
@@ -759,11 +778,11 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
 
         geometry_node = mat_tree.nodes.new('ShaderNodeNewGeometry')
-        geometry_node.location = (2200, 0)
+        geometry_node.location = (2600, 0)
 
         vector_math_node = mat_tree.nodes.new('ShaderNodeVectorMath')
         vector_math_node.operation = 'DOT_PRODUCT'
-        vector_math_node.location = (2400, 0)
+        vector_math_node.location = (2800, 0)
 
         mat_tree.links.new(
             geometry_node.outputs["Normal"],
@@ -777,7 +796,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
         
         math_node = mat_tree.nodes.new('ShaderNodeMath')
         math_node.operation = 'MULTIPLY'
-        math_node.location = (2600, 0)
+        math_node.location = (3000, 0)
 
         mat_tree.links.new(
             opacity_attr_node.outputs["Fac"],
