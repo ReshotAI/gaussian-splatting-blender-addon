@@ -176,19 +176,20 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
         for j in range(0, 16):
             sh_inst_attr_node = mat_tree.nodes.new('ShaderNodeAttribute')
-            sh_inst_attr_node.location = (0, 0)
+            sh_inst_attr_node.location = (1400, 200 * j)
             sh_inst_attr_node.attribute_name = f"sh{j}"
             sh_inst_attr_node.attribute_type = 'INSTANCER'
             sh_inst_attr_nodes.append(sh_inst_attr_node)
             
             sh_geom_attr_node = mat_tree.nodes.new('ShaderNodeAttribute')
-            sh_geom_attr_node.location = (0, 0)
+            sh_geom_attr_node.location = (1400, 200 * j)
             sh_geom_attr_node.attribute_name = f"sh{j}"
             sh_geom_attr_node.attribute_type = 'GEOMETRY'
             sh_geom_attr_nodes.append(sh_geom_attr_node)
 
             vector_math_node = mat_tree.nodes.new('ShaderNodeVectorMath')
             vector_math_node.operation = 'ADD'
+            vector_math_node.location = (1600, 200 * j)
 
             mat_tree.links.new(
                 sh_inst_attr_node.outputs["Vector"],
@@ -210,18 +211,18 @@ class ImportGaussianSplatting(bpy.types.Operator):
         position_attr_node.location = (0, 0)
 
         opacity_attr_node = mat_tree.nodes.new('ShaderNodeAttribute')
-        opacity_attr_node.location = (2800, 0)
+        opacity_attr_node.location = (2400, -200)
         opacity_attr_node.attribute_name = "opacity"
         opacity_attr_node.attribute_type = 'GEOMETRY'
 
         principled_node = mat_tree.nodes.new('ShaderNodeBsdfPrincipled')
-        principled_node.location = (2800, 0)
+        principled_node.location = (2800, 600)
         principled_node.inputs["Base Color"].default_value = (0, 0, 0, 1)
         principled_node.inputs["Specular"].default_value = 0
         principled_node.inputs["Roughness"].default_value = 0
 
         output_node = mat_tree.nodes.new('ShaderNodeOutputMaterial')
-        output_node.location = (3000, 0)
+        output_node.location = (3200, 0)
 
         # Camera location
         combine_xyz_node = mat_tree.nodes.new('ShaderNodeCombineXYZ')
@@ -765,15 +766,15 @@ class ImportGaussianSplatting(bpy.types.Operator):
         vector_math_node.location = (2400, 0)
 
         mat_tree.links.new(
-            geometry_node.outputs["Incoming"],
+            geometry_node.outputs["Normal"],
             vector_math_node.inputs[0]
         )
 
         mat_tree.links.new(
-            geometry_node.outputs["Normal"],
+            geometry_node.outputs["Incoming"],
             vector_math_node.inputs[1]
         )
-
+        
         math_node = mat_tree.nodes.new('ShaderNodeMath')
         math_node.operation = 'MULTIPLY'
         math_node.location = (2600, 0)
