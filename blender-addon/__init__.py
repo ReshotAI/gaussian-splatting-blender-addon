@@ -118,7 +118,7 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         opacity_attr = mesh.attributes.new(name="opacity", type='FLOAT', domain='POINT')
         for i, _ in enumerate(mesh.vertices):
             opacity_attr.data[i].value = opacities[i]
-        
+
         scale_attr = mesh.attributes.new(name="scale", type='FLOAT_VECTOR', domain='POINT')
         for i, _ in enumerate(mesh.vertices):
             scale_attr.data[i].vector = scales[i]
@@ -129,8 +129,12 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         
         for j in range(0, 15):
             sh_attr = mesh.attributes.new(name=f"sh{j+1}", type='FLOAT_VECTOR', domain='POINT')
-            for i, v in enumerate(mesh.vertices):
+            for i, _ in enumerate(mesh.vertices):
                 sh_attr.data[i].vector = features_extra[i, :, j]
+
+        rot_quat_attr = mesh.attributes.new(name="rot_quat", type='FLOAT_COLOR', domain='POINT')
+        for i, _ in enumerate(mesh.vertices):
+            rot_quat_attr.data[i].color = quats[i]
 
         rot_euler_attr = mesh.attributes.new(name="rot_euler", type='FLOAT_VECTOR', domain='POINT')
         for i, _ in enumerate(mesh.vertices):
@@ -967,7 +971,7 @@ class ExportPLY(bpy.types.Operator):
         scale_attr = mesh.attributes.get("scale")
         sh0_attr = mesh.attributes.get("sh0")
         sh_attrs = [mesh.attributes.get(f"sh{j+1}") for j in range(15)]
-        rot_euler_attr = mesh.attributes.get("rot_euler")
+        rot_quat_attr = mesh.attributes.get("rot_quat")
 
         for i, _ in enumerate(mesh.vertices):
             xyz[i] = position_attr.data[i].vector.to_tuple()
@@ -978,9 +982,12 @@ class ExportPLY(bpy.types.Operator):
             for j in range(15):
                 f_rest[i, j*3:(j+1)*3] = sh_attrs[j].data[i].vector.to_tuple()
             
-            euler = mathutils.Euler(rot_euler_attr.data[i].vector)
-            quat = euler.to_quaternion()
-            rotation[i] = (quat.x, quat.y, quat.z, quat.w)
+            quat = rot_quat_attr.data[i].color
+            rotation[i] = (quat[0], quat[1], quat[2], quat[3])
+
+            # euler = mathutils.Euler(rot_euler_attr.data[i].vector)
+            # quat = euler.to_quaternion()
+            # rotation[i] = (quat.x, quat.y, quat.z, quat.w)
 
         opacities = np.log(opacities / (1 - opacities))
         scale = np.log(scale)
