@@ -774,6 +774,10 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         random_value_node.inputs["Probability"].default_value = RECOMMENDED_MAX_GAUSSIANS / N
         random_value_node.data_type = 'BOOLEAN'
 
+        is_point_cloud_node = geo_tree.nodes.new('GeometryNodeBoolean')
+        is_point_cloud_node.location = (0, 600)
+        is_point_cloud_node.boolean = True
+
         ico_node = geo_tree.nodes.new('GeometryNodeMeshIcoSphere')
         ico_node.location = (200, 200)
         ico_node.inputs["Subdivisions"].default_value = 1
@@ -785,12 +789,35 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         instance_node = geo_tree.nodes.new('GeometryNodeInstanceOnPoints')
         instance_node.location = (400, 0)
 
+        switch_node = geo_tree.nodes.new('GeometryNodeSwitch')
+        switch_node.location = (600, 0)
+
+        geo_tree.links.new(
+            is_point_cloud_node.outputs["Boolean"],
+            switch_node.inputs["Switch"]
+        )
+
+        geo_tree.links.new(
+            instance_node.outputs["Instances"],
+            switch_node.inputs["False"]
+        )
+
+        geo_tree.links.new(
+            set_shade_smooth_node.outputs["Geometry"],
+            switch_node.inputs["True"]
+        )
+
+        geo_tree.links.new(
+            switch_node.outputs["Output"],
+            set_material_node.inputs["Geometry"]
+        )
+
         set_material_node = geo_tree.nodes.new('GeometryNodeSetMaterial')
-        set_material_node.location = (600, 0)
+        set_material_node.location = (800, 0)
         set_material_node.inputs["Material"].default_value = mat
 
         group_output_node = geo_tree.nodes.new('NodeGroupOutput')
-        group_output_node.location = (800, 0)
+        group_output_node.location = (1000, 0)
 
         geo_tree.links.new(
             group_input_node.outputs["Geometry"],
@@ -815,11 +842,6 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         geo_tree.links.new(
             mesh_to_points_node.outputs["Points"],
             instance_node.inputs["Points"]
-        )
-
-        geo_tree.links.new(
-            instance_node.outputs["Instances"],
-            set_material_node.inputs["Geometry"]
         )
 
         geo_tree.links.new(
