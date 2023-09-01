@@ -56,7 +56,9 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         if context.preferences.addons["cycles"].preferences.has_active_device():
             bpy.context.scene.cycles.device = 'GPU'
 
-        bpy.context.scene.cycles.transparent_max_bounces = 16
+        bpy.context.scene.cycles.transparent_max_bounces = 20
+
+        RECOMMENDED_MAX_GAUSSIANS = 200_000
 
         ##############################
         # Load PLY
@@ -67,11 +69,13 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         xyz = np.stack((np.asarray(plydata.elements[0]["x"]),
                         np.asarray(plydata.elements[0]["y"]),
                         np.asarray(plydata.elements[0]["z"])), axis=1)
+    
+        N = len(xyz)
         
         opacities = np.asarray(plydata.elements[0]["opacity"])[..., np.newaxis]
         opacities = 1 / (1 + np.exp(-opacities))
 
-        features_dc = np.zeros((xyz.shape[0], 3, 1))
+        features_dc = np.zeros((N, 3, 1))
         features_dc[:, 0, 0] = np.asarray(plydata.elements[0]["f_dc_0"])
         features_dc[:, 1, 0] = np.asarray(plydata.elements[0]["f_dc_1"])
         features_dc[:, 2, 0] = np.asarray(plydata.elements[0]["f_dc_2"])
@@ -79,11 +83,11 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         extra_f_names = [p.name for p in plydata.elements[0].properties if p.name.startswith("f_rest_")]
         extra_f_names = sorted(extra_f_names, key = lambda x: int(x.split('_')[-1]))
         
-        features_extra = np.zeros((xyz.shape[0], len(extra_f_names)))
+        features_extra = np.zeros((N, len(extra_f_names)))
         for idx, attr_name in enumerate(extra_f_names):
             features_extra[:, idx] = np.asarray(plydata.elements[0][attr_name])
         # Reshape (P,F*SH_coeffs) to (P, F, SH_coeffs except DC)
-        features_extra = features_extra.reshape((features_extra.shape[0], 3, 15))
+        features_extra = features_extra.reshape((N, 3, 15))
 
         scales = np.stack((np.asarray(plydata.elements[0]["scale_0"]),
                            np.asarray(plydata.elements[0]["scale_1"]),
@@ -96,9 +100,9 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
                           np.asarray(plydata.elements[0]["rot_2"]),
                           np.asarray(plydata.elements[0]["rot_3"])), axis=1)
 
-        rots_euler = np.zeros((quats.shape[0], 3))
+        rots_euler = np.zeros((N, 3))
 
-        for i in range(quats.shape[0]):
+        for i in range(N):
             quat = mathutils.Quaternion(quats[i])
             euler = quat.to_euler()
             rots_euler[i] = (euler.x, euler.y, euler.z)
@@ -154,26 +158,49 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         for node in mat_tree.nodes:
             mat_tree.nodes.remove(node)
-
+        
         sh_attr_nodes = []
+        sh_inst_attr_nodes = []  # ellipsoids
+        sh_geom_attr_nodes = []  # point cloud
 
         for j in range(0, 16):
-            sh_attr_node = mat_tree.nodes.new('ShaderNodeAttribute')
-            sh_attr_node.location = (0, 0)
-            sh_attr_node.attribute_name = f"sh{j}"
-            sh_attr_node.attribute_type = 'INSTANCER'
-            sh_attr_nodes.append(sh_attr_node)
-        
+            sh_inst_attr_node = mat_tree.nodes.new('ShaderNodeAttribute')
+            sh_inst_attr_node.location = (0, 0)
+            sh_inst_attr_node.attribute_name = f"sh{j}"
+            sh_inst_attr_node.attribute_type = 'GEOMETRY' # 'INSTANCER'
+            sh_inst_attr_nodes.append(sh_inst_attr_node)
+            
+            sh_geom_attr_node = mat_tree.nodes.new('ShaderNodeAttribute')
+            sh_geom_attr_node.location = (0, 0)
+            sh_geom_attr_node.attribute_name = f"sh{j}"
+            sh_geom_attr_node.attribute_type = 'GEOMETRY' # 'INSTANCER'
+            sh_geom_attr_nodes.append(sh_geom_attr_node)
+
+            vector_math_node = mat_tree.nodes.new('ShaderNodeVectorMath')
+            vector_math_node.operation = 'ADD'
+
+            mat_tree.links.new(
+                sh_inst_attr_node.outputs["Vector"],
+                vector_math_node.inputs[0]
+            )
+
+            mat_tree.links.new(
+                sh_geom_attr_node.outputs["Vector"],
+                vector_math_node.inputs[1]
+            )
+
+            sh_attr_nodes.append(vector_math_node)
+
         sh = [sh_attr_node.outputs["Vector"] for sh_attr_node in sh_attr_nodes]
 
         position_attr_node = mat_tree.nodes.new('ShaderNodeAttribute')
         position_attr_node.attribute_name = "position"
-        position_attr_node.attribute_type = 'INSTANCER'
+        position_attr_node.attribute_type = 'GEOMETRY'
 
         opacity_attr_node = mat_tree.nodes.new('ShaderNodeAttribute')
         opacity_attr_node.location = (0, -200)
         opacity_attr_node.attribute_name = "opacity"
-        opacity_attr_node.attribute_type = 'INSTANCER'
+        opacity_attr_node.attribute_type = 'GEOMETRY'
 
         principled_node = mat_tree.nodes.new('ShaderNodeBsdfPrincipled')
         principled_node.location = (200, 0)
@@ -744,7 +771,7 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         random_value_node = geo_tree.nodes.new('FunctionNodeRandomValue')
         random_value_node.location = (0, 400)
-        random_value_node.inputs["Probability"].default_value = 0.5
+        random_value_node.inputs["Probability"].default_value = RECOMMENDED_MAX_GAUSSIANS / N
         random_value_node.data_type = 'BOOLEAN'
 
         ico_node = geo_tree.nodes.new('GeometryNodeMeshIcoSphere')
@@ -858,7 +885,6 @@ class GaussianSplattingPanel(bpy.types.Panel):
 
         if obj is not None and "gaussian_splatting" in obj:
             row = layout.row()
-
             row.prop(obj.modifiers["GeometryNodes"].node_group.nodes.get("Random Value").inputs["Probability"], "default_value", text="Display Percentage")
 
 
