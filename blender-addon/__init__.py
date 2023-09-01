@@ -18,7 +18,7 @@ from .plyfile import PlyData, PlyElement
 
 
 class ImportGaussianSplatting(bpy.types.Operator):
-    bl_idname = "OBJECT_OT_import_gaussian_splatting"
+    bl_idname = "object.import_gaussian_splatting"
     bl_label = "Import 3D Gaussian Splatting"
     bl_description = "Import a 3D Gaussian Splatting file into the scene"
     bl_options = {"REGISTER", "UNDO"}
@@ -952,7 +952,7 @@ def construct_list_of_attributes():
         return l
 
 class ExportGaussianSplatting(bpy.types.Operator):
-    bl_idname = "OBJECT_OT_export_gaussian_splatting"
+    bl_idname = "object.export_gaussian_splatting"
     bl_label = "Export 3D Gaussian Splatting"
     bl_description = "Export a 3D Gaussian Splatting to file"
     
@@ -1046,13 +1046,11 @@ class GaussianSplattingPanel(bpy.types.Panel):
         layout = self.layout
         obj = context.active_object
 
-        # Filepath input
-        layout.prop(context.scene, "ply_file_path", text="PLY Filepath")
-
-        # Import PLY button
+        # Import Gaussian Splatting button
         row = layout.row()
-        row.operator(ImportGaussianSplatting.bl_idname, text="Import Gaussian Splatting").filepath = context.scene.ply_file_path
+        row.operator(ImportGaussianSplatting.bl_idname, text="Import Gaussian Splatting")
 
+        # Display Options
         if obj is not None and "gaussian_splatting" in obj:
             
             row = layout.row()
