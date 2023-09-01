@@ -103,7 +103,7 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         rots_euler = np.zeros((N, 3))
 
         for i in range(N):
-            quat = mathutils.Quaternion(quats[i])
+            quat = mathutils.Quaternion(quats[i].tolist())
             euler = quat.to_euler()
             rots_euler[i] = (euler.x, euler.y, euler.z)
 
@@ -138,12 +138,13 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
             for i, _ in enumerate(mesh.vertices):
                 sh_attr.data[i].vector = features_extra[i, :, j]
 
-        rot_quatxyz_attr = mesh.attributes.new(name="rot_quatxyz", type='FLOAT_VECTOR', domain='POINT')
-        rot_quatw_attr = mesh.attributes.new(name="rot_quatw", type='FLOAT', domain='POINT')
+        rot_quatxyz_attr = mesh.attributes.new(name="quatxyz", type='FLOAT_VECTOR', domain='POINT')
         for i, _ in enumerate(mesh.vertices):
-            for j in range(4):
-                rot_quatxyz_attr.data[i].vector = quats[i][:3]
-                rot_quatw_attr.data[i].value = quats[i][3]
+            rot_quatxyz_attr.data[i].vector = quats[i][:3]
+        
+        rot_quatw_attr = mesh.attributes.new(name="quatw", type='FLOAT', domain='POINT')
+        for i, _ in enumerate(mesh.vertices):
+            rot_quatw_attr.data[i].value = quats[i][3]
 
         rot_euler_attr = mesh.attributes.new(name="rot_euler", type='FLOAT_VECTOR', domain='POINT')
         for i, _ in enumerate(mesh.vertices):
@@ -980,8 +981,8 @@ class ExportPLY(bpy.types.Operator):
         logscale_attr = mesh.attributes.get("logscale")
         sh0_attr = mesh.attributes.get("sh0")
         sh_attrs = [mesh.attributes.get(f"sh{j+1}") for j in range(15)]
-        rot_quatxyz_attr = mesh.attributes.get("rot_quatxyz")
-        rot_quatw_attr = mesh.attributes.get("rot_quatw")
+        rot_quatxyz_attr = mesh.attributes.get("quatxyz")
+        rot_quatw_attr = mesh.attributes.get("quatw")
 
         for i, _ in enumerate(mesh.vertices):
             xyz[i] = position_attr.data[i].vector.to_tuple()
