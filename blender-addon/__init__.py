@@ -16,29 +16,17 @@ import random
 from .plyfile import PlyData, PlyElement
 
 
-class OBJECT_OT_AddTenCircles(bpy.types.Operator):
-    bl_idname = "object.add_ten_circles"
-    bl_label = "Add 10 Circles"
-    bl_description = "Adds 10 circle meshes to the scene"
-    bl_options = {"REGISTER", "UNDO"}
 
-    def execute(self, context):
-        for i in range(10):
-            bpy.ops.mesh.primitive_circle_add()
-        return {'FINISHED'}
-
-
-class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
-    bl_idname = "object.import_gaussian_splatting"
-    bl_label = "Import Gaussian Splatting"
-    bl_description = "Import a Gaussian Splatting file into the scene"
+class ImportGaussianSplatting(bpy.types.Operator):
+    bl_idname = "OBJECT_OT_import_gaussian_splatting"
+    bl_label = "Import 3D Gaussian Splatting"
+    bl_description = "Import a 3D Gaussian Splatting file into the scene"
     bl_options = {"REGISTER", "UNDO"}
     
     filepath: bpy.props.StringProperty(
         name="File Path",
         description="Path to the Gaussian Splatting file",
         default="",
-        maxlen=1024,
         subtype='FILE_PATH',
     )
 
@@ -47,7 +35,7 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
             self.report({'WARNING'}, "Filepath is not set!")
             return {'CANCELLED'}
 
-        start_time = time.time()
+        start_time_0 = time.time()
         
         bpy.context.scene.render.engine = 'CYCLES'
 
@@ -64,7 +52,13 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         # Load PLY
         ##############################
 
+        start_time = time.time()
+
         plydata = PlyData.read(self.filepath)
+
+        print(f"PLY loaded in {time.time() - start_time} seconds")
+
+        start_time = time.time()
 
         xyz = np.stack((np.asarray(plydata.elements[0]["x"]),
                         np.asarray(plydata.elements[0]["y"]),
@@ -86,7 +80,6 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         features_extra = np.zeros((N, len(extra_f_names)))
         for idx, attr_name in enumerate(extra_f_names):
             features_extra[:, idx] = np.asarray(plydata.elements[0][attr_name])
-        # Reshape (P,F*SH_coeffs) to (P, F, SH_coeffs except DC)
         features_extra = features_extra.reshape((N, 3, 15))
 
         log_scales = np.stack((np.asarray(plydata.elements[0]["scale_0"]),
@@ -106,49 +99,50 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
             quat = mathutils.Quaternion(quats[i].tolist())
             euler = quat.to_euler()
             rots_euler[i] = (euler.x, euler.y, euler.z)
+        
+        print("Data loaded in", time.time() - start_time, "seconds")
 
         ##############################
         # Load PLY
         ##############################
 
+        start_time = time.time()
+
         mesh = bpy.data.meshes.new(name="Mesh")
         mesh.from_pydata(xyz.tolist(), [], [])
         mesh.update()
 
+        print("Mesh loaded in", time.time() - start_time, "seconds")
+
+        start_time = time.time()
+
         log_opacity_attr = mesh.attributes.new(name="log_opacity", type='FLOAT', domain='POINT')
+        log_opacity_attr.data.foreach_set("value", log_opacities.flatten())
+
         opacity_attr = mesh.attributes.new(name="opacity", type='FLOAT', domain='POINT')
-        for i, _ in enumerate(mesh.vertices):
-            log_opacity_attr.data[i].value = log_opacities[i]
-            opacity_attr.data[i].value = opacities[i]
+        opacity_attr.data.foreach_set("value", opacities.flatten())
 
         scale_attr = mesh.attributes.new(name="scale", type='FLOAT_VECTOR', domain='POINT')
-        for i, _ in enumerate(mesh.vertices):
-            scale_attr.data[i].vector = scales[i]
+        scale_attr.data.foreach_set("vector", scales.flatten())
 
         logscale_attr = mesh.attributes.new(name="logscale", type='FLOAT_VECTOR', domain='POINT')
-        for i, _ in enumerate(mesh.vertices):
-            logscale_attr.data[i].vector = log_scales[i]
+        logscale_attr.data.foreach_set("vector", log_scales.flatten())
         
         sh0_attr = mesh.attributes.new(name="sh0", type='FLOAT_VECTOR', domain='POINT')
-        for i, _ in enumerate(mesh.vertices):
-            sh0_attr.data[i].vector = features_dc[i]
+        sh0_attr.data.foreach_set("vector", features_dc.flatten())
         
         for j in range(0, 15):
             sh_attr = mesh.attributes.new(name=f"sh{j+1}", type='FLOAT_VECTOR', domain='POINT')
-            for i, _ in enumerate(mesh.vertices):
-                sh_attr.data[i].vector = features_extra[i, :, j]
+            sh_attr.data.foreach_set("vector", features_extra[:, :, j].flatten())
 
         rot_quatxyz_attr = mesh.attributes.new(name="quatxyz", type='FLOAT_VECTOR', domain='POINT')
-        for i, _ in enumerate(mesh.vertices):
-            rot_quatxyz_attr.data[i].vector = quats[i][:3]
+        rot_quatxyz_attr.data.foreach_set("vector", quats[:, :3].flatten())
         
         rot_quatw_attr = mesh.attributes.new(name="quatw", type='FLOAT', domain='POINT')
-        for i, _ in enumerate(mesh.vertices):
-            rot_quatw_attr.data[i].value = quats[i][3]
+        rot_quatw_attr.data.foreach_set("value", quats[:, 3].flatten())
 
         rot_euler_attr = mesh.attributes.new(name="rot_euler", type='FLOAT_VECTOR', domain='POINT')
-        for i, _ in enumerate(mesh.vertices):
-            rot_euler_attr.data[i].vector = rots_euler[i]
+        rot_euler_attr.data.foreach_set("vector", rots_euler.flatten())
 
         obj = bpy.data.objects.new("GaussianSplatting", mesh)
         bpy.context.collection.objects.link(obj)
@@ -160,10 +154,14 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         obj["gaussian_splatting"] = True
 
+        print("Mesh attributes added in", time.time() - start_time, "seconds")
+
 
         ##############################
         # Materials
         ##############################
+
+        start_time = time.time()
 
         mat = bpy.data.materials.new(name="GaussianSplatting")
         mat.use_nodes = True
@@ -260,7 +258,7 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
             normalize_node.inputs[0]
         )
 
-        # Coordinate system transform (x -> -y, y -> -z, z -> x)
+        # Coordinate system transform (x -> -y, y -> -z, z -> x)  TODO: REMOVE
 
         separate_xyz_node = mat_tree.nodes.new('ShaderNodeSeparateXYZ')
         combine_xyz_node = mat_tree.nodes.new('ShaderNodeCombineXYZ')
@@ -752,9 +750,13 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
             output_node.inputs["Surface"]
         )
 
+        print("Material created in", time.time() - start_time, "seconds")
+
         ##############################
         # Geometry Nodes
         ##############################
+
+        start_time = time.time()
 
         geo_node_mod = obj.modifiers.new(name="GeometryNodes", type='NODES')
 
@@ -924,10 +926,15 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
             instance_node.inputs["Rotation"]
         )
 
-        print("Processing time: ", time.time() - start_time)
+        print("Geometry nodes created in", time.time() - start_time, "seconds")
+
+        print("Total Processing time: ", time.time() - start_time_0)
 
         return {'FINISHED'}
 
+    def invoke(self, context, event):
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
 
 
 def construct_list_of_attributes():
@@ -944,13 +951,17 @@ def construct_list_of_attributes():
             l.append('rot_{}'.format(i))
         return l
 
-class ExportPLY(bpy.types.Operator):
-    bl_idname = "export.ply_pointcloud"
-    bl_label = "Export PLY Point Cloud"
+class ExportGaussianSplatting(bpy.types.Operator):
+    bl_idname = "OBJECT_OT_export_gaussian_splatting"
+    bl_label = "Export 3D Gaussian Splatting"
+    bl_description = "Export a 3D Gaussian Splatting to file"
     
-    filepath: bpy.props.StringProperty(subtype="FILE_PATH")
-    
-
+    filepath: bpy.props.StringProperty(
+        name="File Path",
+        description="Path to the Gaussian Splatting file",
+        default="point_cloud.ply",
+        subtype="FILE_PATH"
+    )
 
     def execute(self, context):
         if not self.filepath.lower().endswith('.ply'):
@@ -1015,8 +1026,8 @@ class ExportPLY(bpy.types.Operator):
         return {'FINISHED'}
     
     def invoke(self, context, event):
-        if not self.filepath:
-            self.filepath = bpy.path.abspath("//point_cloud.ply")
+        # if not self.filepath:
+        #     self.filepath = bpy.path.abspath("//point_cloud.ply")
 
         context.window_manager.fileselect_add(self)
         return {'RUNNING_MODAL'}
@@ -1027,6 +1038,7 @@ class GaussianSplattingPanel(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
 
+    bl_idname = "OBJECT_PT_gaussian_splatting"
     bl_category = "Gaussian Splatting"
     bl_label = "Gaussian Splatting"
 
@@ -1039,7 +1051,7 @@ class GaussianSplattingPanel(bpy.types.Panel):
 
         # Import PLY button
         row = layout.row()
-        row.operator(OBJECT_OT_ImportGaussianSplatting.bl_idname, text="Import Gaussian Splatting").filepath = context.scene.ply_file_path
+        row.operator(ImportGaussianSplatting.bl_idname, text="Import Gaussian Splatting").filepath = context.scene.ply_file_path
 
         if obj is not None and "gaussian_splatting" in obj:
             
@@ -1052,21 +1064,19 @@ class GaussianSplattingPanel(bpy.types.Panel):
         
         # Export Gaussian Splatting button
         row = layout.row()
-        row.operator(ExportPLY.bl_idname, text="Export Gaussian Splatting")
+        row.operator(ExportGaussianSplatting.bl_idname, text="Export Gaussian Splatting")
 
 def register():
-    bpy.utils.register_class(OBJECT_OT_ImportGaussianSplatting)
+    bpy.utils.register_class(ImportGaussianSplatting)
     bpy.utils.register_class(GaussianSplattingPanel)
-    bpy.utils.register_class(OBJECT_OT_AddTenCircles)
-    bpy.utils.register_class(ExportPLY)
+    bpy.utils.register_class(ExportGaussianSplatting)
 
     bpy.types.Scene.ply_file_path = bpy.props.StringProperty(name="PLY Filepath", subtype='FILE_PATH')
 
 def unregister():
-    bpy.utils.unregister_class(OBJECT_OT_ImportGaussianSplatting)
+    bpy.utils.unregister_class(ImportGaussianSplatting)
     bpy.utils.unregister_class(GaussianSplattingPanel)
-    bpy.utils.unregister_class(OBJECT_OT_AddTenCircles)
-    bpy.utils.unregister_class(ExportPLY)
+    bpy.utils.unregister_class(ExportGaussianSplatting)
 
     del bpy.types.Scene.ply_file_path
 
