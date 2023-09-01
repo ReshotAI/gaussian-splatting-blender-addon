@@ -875,6 +875,10 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         scale_node.location = (0, 200)
         scale_node.inputs["Scale"].default_value = 2
 
+        avg_node = geo_tree.nodes.new('ShaderNodeVectorMath')
+        avg_node.operation = 'DOT_PRODUCT'
+        avg_node.inputs[1].default_value = (1/3, 1/3, 1/3)
+
         geo_tree.links.new(
             scale_attr.outputs["Attribute"],
             scale_node.inputs[0]
@@ -887,6 +891,11 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         geo_tree.links.new(
             scale_node.outputs["Vector"],
+            avg_node.inputs[0]
+        )
+
+        geo_tree.links.new(
+            avg_node.outputs["Value"],
             set_point_radius_node.inputs["Radius"]
         )
 
