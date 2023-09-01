@@ -762,7 +762,7 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         random_value_node = geo_tree.nodes.new('FunctionNodeRandomValue')
         random_value_node.location = (0, 400)
-        random_value_node.inputs["Probability"].default_value = RECOMMENDED_MAX_GAUSSIANS / N
+        random_value_node.inputs["Probability"].default_value = min(RECOMMENDED_MAX_GAUSSIANS / N, 1)
         random_value_node.data_type = 'BOOLEAN'
 
         maximum_node = geo_tree.nodes.new('ShaderNodeMath')
