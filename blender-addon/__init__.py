@@ -116,15 +116,15 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         mesh.update()
 
         opacity_attr = mesh.attributes.new(name="opacity", type='FLOAT', domain='POINT')
-        for i, v in enumerate(mesh.vertices):
+        for i, _ in enumerate(mesh.vertices):
             opacity_attr.data[i].value = opacities[i]
         
         scale_attr = mesh.attributes.new(name="scale", type='FLOAT_VECTOR', domain='POINT')
-        for i, v in enumerate(mesh.vertices):
+        for i, _ in enumerate(mesh.vertices):
             scale_attr.data[i].vector = scales[i]
         
         sh0_attr = mesh.attributes.new(name="sh0", type='FLOAT_VECTOR', domain='POINT')
-        for i, v in enumerate(mesh.vertices):
+        for i, _ in enumerate(mesh.vertices):
             sh0_attr.data[i].vector = features_dc[i]
         
         for j in range(0, 15):
@@ -133,7 +133,7 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
                 sh_attr.data[i].vector = features_extra[i, :, j]
 
         rot_euler_attr = mesh.attributes.new(name="rot_euler", type='FLOAT_VECTOR', domain='POINT')
-        for i, v in enumerate(mesh.vertices):
+        for i, _ in enumerate(mesh.vertices):
             rot_euler_attr.data[i].vector = rots_euler[i]
 
         obj = bpy.data.objects.new("GaussianSplatting", mesh)
@@ -969,7 +969,7 @@ class ExportPLY(bpy.types.Operator):
         sh_attrs = [mesh.attributes.get(f"sh{j+1}") for j in range(15)]
         rot_euler_attr = mesh.attributes.get("rot_euler")
 
-        for i, v in enumerate(mesh.vertices):
+        for i, _ in enumerate(mesh.vertices):
             xyz[i] = position_attr.data[i].vector.to_tuple()
             opacities[i] = opacity_attr.data[i].value
             scale[i] = scale_attr.data[i].vector.to_tuple()
@@ -982,15 +982,8 @@ class ExportPLY(bpy.types.Operator):
             quat = euler.to_quaternion()
             rotation[i] = (quat.x, quat.y, quat.z, quat.w)
 
-            
-
-        # xyz = self._xyz.detach().cpu().numpy()
-        # normals = np.zeros_like(xyz)
-        # f_dc = self._features_dc.detach().transpose(1, 2).flatten(start_dim=1).contiguous().cpu().numpy()
-        # f_rest = self._features_rest.detach().transpose(1, 2).flatten(start_dim=1).contiguous().cpu().numpy()
-        # opacities = self._opacity.detach().cpu().numpy()
-        # scale = self._scaling.detach().cpu().numpy()
-        # rotation = self._rotation.detach().cpu().numpy()
+        opacities = np.log(opacities / (1 - opacities))
+        scale = np.log(scale)
 
         dtype_full = [(attribute, 'f4') for attribute in construct_list_of_attributes()]
 
@@ -1004,7 +997,7 @@ class ExportPLY(bpy.types.Operator):
     
     def invoke(self, context, event):
         if not self.filepath:
-            self.filepath = bpy.path.abspath("//untitled.ply")
+            self.filepath = bpy.path.abspath("//point_cloud.ply")
 
         context.window_manager.fileselect_add(self)
         return {'RUNNING_MODAL'}
