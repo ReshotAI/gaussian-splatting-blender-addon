@@ -774,7 +774,7 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         random_value_node.inputs["Probability"].default_value = RECOMMENDED_MAX_GAUSSIANS / N
         random_value_node.data_type = 'BOOLEAN'
 
-        is_point_cloud_node = geo_tree.nodes.new('GeometryNodeBoolean')
+        is_point_cloud_node = geo_tree.nodes.new('FunctionNodeInputBool')
         is_point_cloud_node.location = (0, 600)
         is_point_cloud_node.boolean = True
 
@@ -791,26 +791,7 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
 
         switch_node = geo_tree.nodes.new('GeometryNodeSwitch')
         switch_node.location = (600, 0)
-
-        geo_tree.links.new(
-            is_point_cloud_node.outputs["Boolean"],
-            switch_node.inputs["Switch"]
-        )
-
-        geo_tree.links.new(
-            instance_node.outputs["Instances"],
-            switch_node.inputs["False"]
-        )
-
-        geo_tree.links.new(
-            set_shade_smooth_node.outputs["Geometry"],
-            switch_node.inputs["True"]
-        )
-
-        geo_tree.links.new(
-            switch_node.outputs["Output"],
-            set_material_node.inputs["Geometry"]
-        )
+        switch_node.input_type = 'GEOMETRY'
 
         set_material_node = geo_tree.nodes.new('GeometryNodeSetMaterial')
         set_material_node.location = (800, 0)
@@ -837,6 +818,26 @@ class OBJECT_OT_ImportGaussianSplatting(bpy.types.Operator):
         geo_tree.links.new(
             set_shade_smooth_node.outputs["Geometry"],
             instance_node.inputs["Instance"]
+        )
+
+        geo_tree.links.new(
+            is_point_cloud_node.outputs["Boolean"],
+            switch_node.inputs[1]
+        )
+
+        geo_tree.links.new(
+            instance_node.outputs["Instances"],
+            switch_node.inputs[14]
+        )
+
+        geo_tree.links.new(
+            set_shade_smooth_node.outputs["Geometry"],
+            switch_node.inputs[15]
+        )
+
+        geo_tree.links.new(
+            switch_node.outputs[6],
+            set_material_node.inputs["Geometry"]
         )
 
         geo_tree.links.new(
@@ -908,6 +909,9 @@ class GaussianSplattingPanel(bpy.types.Panel):
         if obj is not None and "gaussian_splatting" in obj:
             row = layout.row()
             row.prop(obj.modifiers["GeometryNodes"].node_group.nodes.get("Random Value").inputs["Probability"], "default_value", text="Display Percentage")
+
+            row = layout.row()
+            row.prop(obj.modifiers["GeometryNodes"].node_group.nodes.get("Boolean"), "boolean", text="As point cloud")
 
 
 def register():
