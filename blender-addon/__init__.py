@@ -935,12 +935,13 @@ class GaussianSplattingPanel(bpy.types.Panel):
         row.operator(OBJECT_OT_ImportGaussianSplatting.bl_idname, text="Import Gaussian Splatting").filepath = context.scene.ply_file_path
 
         if obj is not None and "gaussian_splatting" in obj:
-            row = layout.row()
-            row.prop(obj.modifiers["GeometryNodes"].node_group.nodes.get("Random Value").inputs["Probability"], "default_value", text="Display Percentage")
-
+            
             row = layout.row()
             row.prop(obj.modifiers["GeometryNodes"].node_group.nodes.get("Boolean"), "boolean", text="As point cloud")
 
+            if not obj.modifiers["GeometryNodes"].node_group.nodes.get("Boolean").boolean:
+                row = layout.row()
+                row.prop(obj.modifiers["GeometryNodes"].node_group.nodes.get("Random Value").inputs["Probability"], "default_value", text="Display Percentage")
 
 def register():
     bpy.utils.register_class(OBJECT_OT_ImportGaussianSplatting)
