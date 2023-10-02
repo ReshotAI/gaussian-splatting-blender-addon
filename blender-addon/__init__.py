@@ -164,6 +164,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
         mat = bpy.data.materials.new(name="GaussianSplatting")
         mat.use_nodes = True
+        mat.blend_method = "HASHED"
 
         mat_tree = mat.node_tree
 
@@ -879,11 +880,13 @@ class ImportGaussianSplatting(bpy.types.Operator):
         set_material_node.inputs["Material"].default_value = mat
 
         group_output_node = geo_tree.nodes.new('NodeGroupOutput')
-        group_output_node.location = (1000, 0)
+        group_output_node.location = (1200, 0)
 
         set_point_radius_node = geo_tree.nodes.new('GeometryNodeSetPointRadius')
         set_point_radius_node.location = (200, 400)
 
+        realize_instances_node = geo_tree.nodes.new('GeometryNodeRealizeInstances')
+        realize_instances_node.location = (1000, 0)
 
         geo_tree.links.new(
             group_input_node.outputs["Geometry"],
@@ -947,6 +950,11 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
         geo_tree.links.new(
             set_material_node.outputs["Geometry"],
+            realize_instances_node.inputs["Geometry"]
+        )
+        
+        geo_tree.links.new(
+            realize_instances_node.outputs["Geometry"],
             group_output_node.inputs["Geometry"]
         )
 
