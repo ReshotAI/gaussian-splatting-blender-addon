@@ -164,6 +164,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
         mat = bpy.data.materials.new(name="GaussianSplatting")
         mat.use_nodes = True
+        mat.blend_method = "HASHED"
 
         mat_tree = mat.node_tree
 
