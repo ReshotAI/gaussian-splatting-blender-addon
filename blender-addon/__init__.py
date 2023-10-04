@@ -38,8 +38,6 @@ class ImportGaussianSplatting(bpy.types.Operator):
         
         bpy.context.scene.render.engine = 'CYCLES'
 
-        # bpy.context.preferences.addons['cycles'].preferences.compute_device_type = 'OPTIX'
-
         if context.preferences.addons["cycles"].preferences.has_active_device():
             bpy.context.scene.cycles.device = 'GPU'
 
@@ -226,12 +224,12 @@ class ImportGaussianSplatting(bpy.types.Operator):
         opacity_attr_node.location = (2800, -200)
 
         mat_tree.links.new(
-            opacity_geom_attr_node.outputs["Value"],
+            opacity_geom_attr_node.outputs["Fac"],
             opacity_attr_node.inputs[0]
         )
 
         mat_tree.links.new(
-            opacity_inst_attr_node.outputs["Value"],
+            opacity_inst_attr_node.outputs["Fac"],
             opacity_attr_node.inputs[1]
         )
 
@@ -800,7 +798,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
         math_node.location = (3000, 0)
 
         mat_tree.links.new(
-            opacity_attr_node.outputs["Fac"],
+            opacity_attr_node.outputs["Value"],
             math_node.inputs[0]
         )
 
