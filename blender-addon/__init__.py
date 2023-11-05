@@ -2,7 +2,7 @@ bl_info = {
     "name": "3D Gaussian Splatting",
     "author": "Alex Carlier",
     "version": (0, 0, 1),
-    "blender": (3, 4, 0),
+    "blender": (4, 0, 0),
     "location": "3D Viewport > Sidebar > 3D Gaussian Splatting",
     "description": "3D Gaussian Splatting tool",
 }
