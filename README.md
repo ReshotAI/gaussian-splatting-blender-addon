@@ -1,5 +1,7 @@
 # 3D Gaussian Splatting Blender Addon
 
+- BricksAR: [link](https://www.bricksar.com)
+
 ## Disclaimer
 This add-on was developed mostly as an experimentation, it is slow on large scenes, and not fully accurate. It can be used as a tool to clean floaters in Gaussian Splatting captures.
 
