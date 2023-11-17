@@ -849,10 +849,18 @@ class ImportGaussianSplatting(bpy.types.Operator):
         mesh_to_points_node.location = (200, 0)
         mesh_to_points_node.inputs["Radius"].default_value = 0.01
 
+        # Create the random value node
         random_value_node = geo_tree.nodes.new('FunctionNodeRandomValue')
         random_value_node.location = (0, 400)
-        random_value_node.inputs["Probability"].default_value = min(RECOMMENDED_MAX_GAUSSIANS / N, 1)
         random_value_node.data_type = 'BOOLEAN'
+
+        # Check if the 'Probability' input exists before setting its default value
+        if "Probability" in random_value_node.inputs:
+            random_value_node.inputs["Probability"].default_value = min(RECOMMENDED_MAX_GAUSSIANS / N, 1)
+        else:
+            print("Error: 'Probability' input not found on 'FunctionNodeRandomValue'")
+
+
 
         maximum_node = geo_tree.nodes.new('ShaderNodeMath')
         maximum_node.location = (0, 400)
@@ -1133,20 +1141,18 @@ class GaussianSplattingPanel(bpy.types.Panel):
         if obj is not None and "gaussian_splatting" in obj:
             
             # Display Options
-            row = layout.row()
-            row.prop(obj.modifiers["Geometry Nodes"].node_group.nodes.get("Boolean"), "boolean", text="As point cloud (faster)")
+            boolean_node = obj.modifiers["Geometry Nodes"].node_group.nodes.get("Boolean")
+            if boolean_node is not None:
+                row = layout.row()
+                row.prop(boolean_node, "boolean", text="As point cloud (faster)")
 
-        boolean_node = obj.modifiers["Geometry Nodes"].node_group.nodes.get("Boolean")
-        if boolean_node:
-            row.prop(boolean_node, "boolean", text="As point cloud (faster)")
-        else:
-            # Handle the case where the Boolean node does not exist
-            print("Boolean node not found in the geometry nodes.")
+                if not boolean_node.boolean:
+                    row = layout.row()
+                    row.prop(obj.modifiers["Geometry Nodes"].node_group.nodes.get("Random Value").inputs["Probability"], "default_value", text="Display Percentage")
 
             # Export Gaussian Splatting button
             row = layout.row()
             row.operator(ExportGaussianSplatting.bl_idname, text="Export Gaussian Splatting")
-
 def register():
     bpy.utils.register_class(ImportGaussianSplatting)
     bpy.utils.register_class(GaussianSplattingPanel)

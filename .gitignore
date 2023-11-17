@@ -1,2 +1,7 @@
 *.zip
 *.oso
+
+add node module and package lock and json 
+node_modules/
+package-lock.json
+package.json
