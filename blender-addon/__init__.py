@@ -2,7 +2,7 @@ bl_info = {
     "name": "3D Gaussian Splatting",
     "author": "Alex Carlier",
     "version": (0, 0, 1),
-    "blender": (3, 4, 0),
+    "blender": (4, 0, 0),
     "location": "3D Viewport > Sidebar > 3D Gaussian Splatting",
     "description": "3D Gaussian Splatting tool",
 }
@@ -62,9 +62,13 @@ class ImportGaussianSplatting(bpy.types.Operator):
                         np.asarray(plydata.elements[0]["z"])), axis=1)
     
         N = len(xyz)
-        
-        log_opacities = np.asarray(plydata.elements[0]["opacity"])[..., np.newaxis]
-        opacities = 1 / (1 + np.exp(-log_opacities))
+        print(f"ply data: {plydata.elements[0]}")
+        if 'opacity' in plydata.elements[0]:
+            log_opacities = np.asarray(plydata.elements[0]["opacity"])[..., np.newaxis]
+            opacities = 1 / (1 + np.exp(-log_opacities))
+        else:
+            log_opacities = np.asarray(1)[..., np.newaxis]
+            opacities = 1 / (1 + np.exp(-log_opacities))
 
         features_dc = np.zeros((N, 3, 1))
         features_dc[:, 0, 0] = np.asarray(plydata.elements[0]["f_dc_0"])
@@ -236,8 +240,9 @@ class ImportGaussianSplatting(bpy.types.Operator):
         principled_node = mat_tree.nodes.new('ShaderNodeBsdfPrincipled')
         principled_node.location = (3200, 600)
         principled_node.inputs["Base Color"].default_value = (0, 0, 0, 1)
-        principled_node.inputs["Specular"].default_value = 0
+        principled_node.inputs["Specular IOR Level"].default_value = 0
         principled_node.inputs["Roughness"].default_value = 0
+        principled_node.inputs["Emission Strength"].default_value = 1
 
         output_node = mat_tree.nodes.new('ShaderNodeOutputMaterial')
         output_node.location = (3600, 0)
@@ -772,7 +777,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
         mat_tree.links.new(
             gamma_node.outputs["Color"],
-            principled_node.inputs["Emission"]
+            principled_node.inputs["Emission Color"],
         )
 
 
@@ -827,7 +832,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
         start_time = time.time()
 
-        geo_node_mod = obj.modifiers.new(name="GeometryNodes", type='NODES')
+        geo_node_mod = obj.modifiers.new(name="Geometry Nodes", type='NODES')
 
         geo_tree = bpy.data.node_groups.new(name="GaussianSplatting", type='GeometryNodeTree')
         geo_node_mod.node_group = geo_tree
@@ -835,8 +840,10 @@ class ImportGaussianSplatting(bpy.types.Operator):
         for node in geo_tree.nodes:
             geo_tree.nodes.remove(node)
         
-        geo_tree.inputs.new('NodeSocketGeometry', "Geometry")
-        geo_tree.outputs.new('NodeSocketGeometry', "Geometry")
+        # geo_tree.inputs.new('NodeSocketGeometry', "Geometry")
+        # geo_tree.outputs.new('NodeSocketGeometry', "Geometry")
+        geo_tree.interface.new_socket(name='Geometry', in_out='INPUT', socket_type='NodeSocketGeometry')
+        geo_tree.interface.new_socket(name='Geometry', in_out='OUTPUT', socket_type='NodeSocketGeometry')
 
         group_input_node = geo_tree.nodes.new('NodeGroupInput')
         group_input_node.location = (0, 0)
@@ -847,8 +854,11 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
         random_value_node = geo_tree.nodes.new('FunctionNodeRandomValue')
         random_value_node.location = (0, 400)
-        random_value_node.inputs["Probability"].default_value = min(RECOMMENDED_MAX_GAUSSIANS / N, 1)
         random_value_node.data_type = 'BOOLEAN'
+        if "Probability" in random_value_node.inputs:
+            random_value_node.inputs["Probability"].default_value = min(RECOMMENDED_MAX_GAUSSIANS / N, 1)
+        else:
+            print("Error: 'Probability' input not found on 'FunctionNodeRandomValue'")
 
         maximum_node = geo_tree.nodes.new('ShaderNodeMath')
         maximum_node.location = (0, 400)
@@ -1130,11 +1140,11 @@ class GaussianSplattingPanel(bpy.types.Panel):
             
             # Display Options
             row = layout.row()
-            row.prop(obj.modifiers["GeometryNodes"].node_group.nodes.get("Boolean"), "boolean", text="As point cloud (faster)")
+            row.prop(obj.modifiers["Geometry Nodes"].node_group.nodes.get("Boolean"), "boolean", text="As point cloud (faster)")
 
-            if not obj.modifiers["GeometryNodes"].node_group.nodes.get("Boolean").boolean:
+            if not obj.modifiers["Geometry Nodes"].node_group.nodes.get("Boolean").boolean:
                 row = layout.row()
-                row.prop(obj.modifiers["GeometryNodes"].node_group.nodes.get("Random Value").inputs["Probability"], "default_value", text="Display Percentage")
+                row.prop(obj.modifiers["Geometry Nodes"].node_group.nodes.get("Random Value").inputs["Probability"], "default_value", text="Display Percentage")
 
             # Export Gaussian Splatting button
             row = layout.row()
