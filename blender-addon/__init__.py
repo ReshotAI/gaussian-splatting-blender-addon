@@ -1185,10 +1185,6 @@ class GaussianSplattingPanel(bpy.types.Panel):
                 row.prop(obj.modifiers["Geometry Nodes"].node_group.nodes.get("Random Value").inputs["Probability"],
                          "default_value", text="Display Percentage")
 
-            # Select active operator
-            row = layout.row()
-            row.operator()
-
             # Export Gaussian Splatting button
             row = layout.row()
             row.operator(ExportGaussianSplatting.bl_idname, text="Export Gaussian Splatting")
