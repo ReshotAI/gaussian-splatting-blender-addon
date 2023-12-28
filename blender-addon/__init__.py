@@ -8,6 +8,7 @@ bl_info = {
 }
 
 import bpy
+import bmesh
 import mathutils
 import numpy as np
 import time
@@ -847,7 +848,7 @@ class ImportGaussianSplatting(bpy.types.Operator):
         mesh_to_points_node.location = (200, 0)
         mesh_to_points_node.inputs["Radius"].default_value = 0.01
 
-        # Opacity thresholding
+        # Thresholding
 
         opacity_attr_gn_node = geo_tree.nodes.new('GeometryNodeInputNamedAttribute')
         opacity_attr_gn_node.location = (100, 100)
@@ -1177,22 +1178,62 @@ class GaussianSplattingPanel(bpy.types.Panel):
                      text="As point cloud (faster)")
 
             row = layout.row()
-            row.prop(obj.modifiers["Geometry Nodes"].node_group.nodes.get("Value").outputs[0], "default_value",
-                     text="Opacity threshold")
+            col1 = row.column()
+            col2 = row.column()
+            col1.prop(bpy.data.node_groups["GaussianSplatting"].nodes["Named Attribute"].inputs[0],
+                      "default_value", text="Attribute"
+                      )
+            col2.prop(obj.modifiers["Geometry Nodes"].node_group.nodes.get("Value").outputs[0], "default_value",
+                      text="Threshold")
 
             if not obj.modifiers["Geometry Nodes"].node_group.nodes.get("Boolean").boolean:
                 row = layout.row()
                 row.prop(obj.modifiers["Geometry Nodes"].node_group.nodes.get("Random Value").inputs["Probability"],
                          "default_value", text="Display Percentage")
 
+            # Select active
+            row = layout.row()
+            row.operator(SelectActiveSplats.bl_idname, text="Select Active Splats")
+            row.enabled = context.mode == "EDIT_MESH"
+
             # Export Gaussian Splatting button
             row = layout.row()
             row.operator(ExportGaussianSplatting.bl_idname, text="Export Gaussian Splatting")
 
 
+class SelectActiveSplats(bpy.types.Operator):
+    bl_idname = "object.select_active_splats"
+    bl_label = "Select Active Splats"
+    bl_description = "Select filtered splats in edit mode"
+
+    def execute(self, context):
+        obj = context.active_object
+
+        if context.mode != "EDIT_MESH":
+            self.report({"WARNING"}, "Edit mode operator.")
+            return {"CANCELLED"}
+
+        bm = bmesh.from_edit_mesh(obj.data)
+        attr_name = bpy.data.node_groups["GaussianSplatting"].nodes["Named Attribute"].inputs[0].default_value
+        attr_thresh = bpy.data.node_groups["GaussianSplatting"].nodes["Value"].outputs[0].default_value
+
+        attr_id = bm.verts.layers.float.get(attr_name)
+        if attr_id is None:
+            self.report({"WARNING"},
+                        "Attribute not found or not supported. Only float attributes are currently supported.")
+            return {'CANCELLED'}
+
+        for v in bm.verts:
+            v.select_set(v[attr_id] >= attr_thresh)
+        bm.select_flush_mode()
+        bmesh.update_edit_mesh(obj.data)
+        return {'FINISHED'}
+
+
 def register():
     bpy.utils.register_class(ImportGaussianSplatting)
     bpy.utils.register_class(GaussianSplattingPanel)
+    bpy.utils.register_class(SelectActiveSplats)
     bpy.utils.register_class(ExportGaussianSplatting)
 
     bpy.types.Scene.ply_file_path = bpy.props.StringProperty(name="PLY Filepath", subtype='FILE_PATH')
@@ -1201,6 +1242,7 @@ def register():
 def unregister():
     bpy.utils.unregister_class(ImportGaussianSplatting)
     bpy.utils.unregister_class(GaussianSplattingPanel)
+    bpy.utils.unregister_class(SelectActiveSplats)
     bpy.utils.unregister_class(ExportGaussianSplatting)
 
     del bpy.types.Scene.ply_file_path
