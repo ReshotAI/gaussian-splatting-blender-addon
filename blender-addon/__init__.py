@@ -137,10 +137,10 @@ class ImportGaussianSplatting(bpy.types.Operator):
             sh_attr.data.foreach_set("vector", features_extra[:, :, j].flatten())
 
         rot_quatxyz_attr = mesh.attributes.new(name="quatxyz", type='FLOAT_VECTOR', domain='POINT')
-        rot_quatxyz_attr.data.foreach_set("vector", quats[:, :3].flatten())
+        rot_quatxyz_attr.data.foreach_set("vector", quats[:, 1:].flatten())
 
         rot_quatw_attr = mesh.attributes.new(name="quatw", type='FLOAT', domain='POINT')
-        rot_quatw_attr.data.foreach_set("value", quats[:, 3].flatten())
+        rot_quatw_attr.data.foreach_set("value", quats[:, 0].flatten())
 
         rot_euler_attr = mesh.attributes.new(name="rot_euler", type='FLOAT_VECTOR', domain='POINT')
         rot_euler_attr.data.foreach_set("vector", rots_euler.flatten())
@@ -1086,6 +1086,11 @@ class ExportGaussianSplatting(bpy.types.Operator):
         subtype="FILE_PATH"
     )
 
+    @classmethod
+    def poll(cls, context):
+        obj = context.active_object
+        return obj is not None and obj.get("gaussian_splatting", False)
+
     def execute(self, context):
         if not self.filepath.lower().endswith('.ply'):
             self.filepath += ".ply"
@@ -1180,7 +1185,7 @@ class GaussianSplattingPanel(bpy.types.Panel):
             row = layout.row()
             col1 = row.column()
             col2 = row.column()
-            col1.prop(bpy.data.node_groups["GaussianSplatting"].nodes["Named Attribute"].inputs[0],
+            col1.prop(obj.modifiers["Geometry Nodes"].node_group.nodes["Named Attribute"].inputs[0],
                       "default_value", text="Attribute"
                       )
             col2.prop(obj.modifiers["Geometry Nodes"].node_group.nodes.get("Value").outputs[0], "default_value",
@@ -1194,7 +1199,6 @@ class GaussianSplattingPanel(bpy.types.Panel):
             # Select active
             row = layout.row()
             row.operator(SelectActiveSplats.bl_idname, text="Select Active Splats")
-            row.enabled = context.mode == "EDIT_MESH"
 
             # Export Gaussian Splatting button
             row = layout.row()
@@ -1206,6 +1210,10 @@ class SelectActiveSplats(bpy.types.Operator):
     bl_label = "Select Active Splats"
     bl_description = "Select filtered splats in edit mode"
 
+    @classmethod
+    def poll(cls, context):
+        return context.mode == "EDIT_MESH"
+
     def execute(self, context):
         obj = context.active_object
 
@@ -1214,8 +1222,8 @@ class SelectActiveSplats(bpy.types.Operator):
             return {"CANCELLED"}
 
         bm = bmesh.from_edit_mesh(obj.data)
-        attr_name = bpy.data.node_groups["GaussianSplatting"].nodes["Named Attribute"].inputs[0].default_value
-        attr_thresh = bpy.data.node_groups["GaussianSplatting"].nodes["Value"].outputs[0].default_value
+        attr_name = obj.modifiers["Geometry Nodes"].node_group.nodes["Named Attribute"].inputs[0].default_value
+        attr_thresh = obj.modifiers["Geometry Nodes"].node_group.nodes["Value"].outputs[0].default_value
 
         attr_id = bm.verts.layers.float.get(attr_name)
         if attr_id is None:
@@ -1230,11 +1238,100 @@ class SelectActiveSplats(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class ApplyTransform(bpy.types.Operator):
+    bl_idname = "object.apply_transforms_gs"
+    bl_label = "Apply transforms to Gaussian Splatting"
+
+    location: bpy.props.BoolProperty(default=True)
+    rotation: bpy.props.BoolProperty(default=True)
+    scale: bpy.props.BoolProperty(default=True)
+
+    @classmethod
+    def poll(cls, context):
+        obj = context.active_object
+        return obj is not None and bool(context.active_object.get("gaussian_splatting"))
+
+    def execute(self, context):
+        obj = context.active_object
+        count = len(obj.data.vertices)
+        rotation_mode = obj.rotation_mode
+        if self.rotation:
+            # quatw quatxyz rot_eul
+            quatw = np.empty((count, 1)).flatten()
+            quatxyz = np.empty((count, 3)).flatten()
+            euler = np.empty((count, 3))
+
+            obj.rotation_mode = "QUATERNION"
+            rotation = obj.rotation_quaternion
+            rot_quatw = obj.data.attributes.get("quatw")
+            rot_quatw.data.foreach_get("value", quatw)
+            rot_quatxyz = obj.data.attributes.get("quatxyz")
+            rot_quatxyz.data.foreach_get("vector", quatxyz)  # avoid copy
+
+            rot_euler = obj.data.attributes.get("rot_euler")
+
+            quat = np.concatenate([quatw.reshape(-1, 1), quatxyz.reshape(-1, 3)], axis=1)
+            for i in range(count):
+                q = mathutils.Quaternion(quat[i].tolist())
+                q.rotate(rotation)
+                quat[i] = (q.w, q.x, q.y, q.z)
+                eul = q.to_euler()
+                euler[i] = (eul.x, eul.y, eul.z)
+
+            rot_quatw.data.foreach_set("value", quat[:, 0])
+            rot_quatxyz.data.foreach_set("vector", quat[:, 1:].flatten())
+            rot_euler.data.foreach_set("vector", euler.flatten())
+
+            obj.rotation_mode = rotation_mode
+
+        if self.scale:
+            # scale logscale
+            log_scale_transform = np.log(np.array(obj.scale))[None, ...]
+            log_scales = np.empty((count, 3)).flatten()
+            log_scale_attr = obj.data.attributes.get("logscale")
+            log_scale_attr.data.foreach_get("vector", log_scales)
+            log_scales = log_scales.reshape(count, 3)
+            log_scales = log_scales + log_scale_transform
+            log_scale_attr.data.foreach_set("vector", log_scales.flatten())
+            scales = np.exp(log_scales)
+            scales_attr = obj.data.attributes.get("scale")
+            scales_attr.data.foreach_set("vector", scales.flatten())
+
+        bpy.ops.object.transform_apply(location=self.location,
+                                       rotation=self.rotation,
+                                       scale=self.scale)
+
+        return {'FINISHED'}
+
+
+def draw_gs_apply_transforms(self, context):
+    self.layout.separator()
+    prop = self.layout.operator("object.apply_transforms_gs", text="Location (Gaussian Splatting)")
+    prop.location = True
+    prop.rotation = False
+    prop.scale = False
+
+    prop = self.layout.operator("object.apply_transforms_gs", text="Rotation (Gaussian Splatting)")
+    prop.location = False
+    prop.rotation = True
+    prop.scale = False
+
+    prop = self.layout.operator("object.apply_transforms_gs", text="Scale (Gaussian Splatting)")
+    prop.location = False
+    prop.rotation = False
+    prop.scale = True
+
+    self.layout.operator("object.apply_transforms_gs", text="All (Gaussian Splatting)")
+
+
 def register():
     bpy.utils.register_class(ImportGaussianSplatting)
     bpy.utils.register_class(GaussianSplattingPanel)
     bpy.utils.register_class(SelectActiveSplats)
     bpy.utils.register_class(ExportGaussianSplatting)
+    bpy.utils.register_class(ApplyTransform)
+
+    bpy.types.VIEW3D_MT_object_apply.append(draw_gs_apply_transforms)
 
     bpy.types.Scene.ply_file_path = bpy.props.StringProperty(name="PLY Filepath", subtype='FILE_PATH')
 
@@ -1244,6 +1341,9 @@ def unregister():
     bpy.utils.unregister_class(GaussianSplattingPanel)
     bpy.utils.unregister_class(SelectActiveSplats)
     bpy.utils.unregister_class(ExportGaussianSplatting)
+    bpy.utils.unregister_class(ApplyTransform)
+
+    bpy.types.VIEW3D_MT_object_apply.remove(draw_gs_apply_transforms)
 
     del bpy.types.Scene.ply_file_path
 
