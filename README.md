@@ -1,7 +1,5 @@
 # 3D Gaussian Splatting Blender Addon
 
-**Sponsored by [BricksAR](https://www.bricksar.com): Build a LEGO city in AR**
-
 ## Disclaimer
 This add-on was developed mostly as an experimentation, it is slow on large scenes, and not fully accurate. It can be used as a tool to clean floaters in Gaussian Splatting captures.
 
