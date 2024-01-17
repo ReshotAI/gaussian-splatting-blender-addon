@@ -1132,7 +1132,7 @@ class ExportGaussianSplatting(bpy.types.Operator):
 
             rotxyz_quat = rot_quatxyz_attr.data[i].vector.to_tuple()
             rotw_quat = rot_quatw_attr.data[i].value
-            rotation[i] = (*rotxyz_quat, rotw_quat)
+            rotation[i] = (rotw_quat, *rotxyz_quat)
 
             # euler = mathutils.Euler(rot_euler_attr.data[i].vector)
             # quat = euler.to_quaternion()
