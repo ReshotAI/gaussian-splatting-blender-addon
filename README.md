@@ -1,4 +1,4 @@
-![image](https://github.com/Wladefant/gaussian-splatting-blender-addon/assets/79611093/25811aa2-dd00-4494-bc9a-9aaa34c0bf87)# 3D Gaussian Splatting Blender Addon
+# 3D Gaussian Splatting Blender Addon
 
 ## Disclaimer
 This add-on was developed mostly as an experimentation, it is slow on large scenes, and not fully accurate. It can be used as a tool to clean floaters in Gaussian Splatting captures.
