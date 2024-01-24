@@ -1,4 +1,5 @@
 # 3D Gaussian Splatting Blender Addon
+This is a Blender add-on that allows you to render point clouds with Gaussian splatting technique, which creates smooth and realistic images. It can also be used to remove noise and outliers from point cloud data.
 
 ## Disclaimer
 This add-on was developed mostly as an experimentation, it is slow on large scenes, and not fully accurate. It can be used as a tool to clean floaters in Gaussian Splatting captures.
@@ -21,4 +22,6 @@ In order to be faster in non-pointcloud mode, it would be needed to implement ga
 
 This is an older version!!
 
-The reason you can not use the newer version is that the blender4.0 changes are not backwards compatible and have many breaking api changes
+## Compatibility
+
+This add-on is compatible with Blender 4.0 and above. It is not backwards compatible with older versions of Blender, due to some changes in the Blender API.
