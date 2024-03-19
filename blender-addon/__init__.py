@@ -962,12 +962,12 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
         geo_tree.links.new(
             is_point_cloud_node.outputs["Boolean"],
-            switch_node.inputs[1]
+            switch_node.inputs[0]
         )
 
         geo_tree.links.new(
             instance_node.outputs["Instances"],
-            switch_node.inputs[14]
+            switch_node.inputs[1]
         )
 
         geo_tree.links.new(
@@ -977,11 +977,11 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
         geo_tree.links.new(
             set_point_radius_node.outputs["Points"],
-            switch_node.inputs[15]
+            switch_node.inputs[2]
         )
 
         geo_tree.links.new(
-            switch_node.outputs[6],
+            switch_node.outputs[0],
             set_material_node.inputs["Geometry"]
         )
 
