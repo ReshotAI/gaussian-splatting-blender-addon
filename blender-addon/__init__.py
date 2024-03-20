@@ -81,7 +81,8 @@ class ImportGaussianSplatting(bpy.types.Operator):
         features_extra = np.zeros((N, len(extra_f_names)))
         for idx, attr_name in enumerate(extra_f_names):
             features_extra[:, idx] = np.asarray(plydata.elements[0][attr_name])
-        features_extra = features_extra.reshape((N, 3, 15))
+        if features_extra.size > 0 :
+            features_extra = features_extra.reshape((N, 3, 15))
 
         log_scales = np.stack((np.asarray(plydata.elements[0]["scale_0"]),
                                np.asarray(plydata.elements[0]["scale_1"]),
@@ -134,7 +135,8 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
         for j in range(0, 15):
             sh_attr = mesh.attributes.new(name=f"sh{j + 1}", type='FLOAT_VECTOR', domain='POINT')
-            sh_attr.data.foreach_set("vector", features_extra[:, :, j].flatten())
+            if features_extra.size > 0 :
+                sh_attr.data.foreach_set("vector", features_extra[:, :, j].flatten())
 
         rot_quatxyz_attr = mesh.attributes.new(name="quatxyz", type='FLOAT_VECTOR', domain='POINT')
         rot_quatxyz_attr.data.foreach_set("vector", quats[:, :3].flatten())
