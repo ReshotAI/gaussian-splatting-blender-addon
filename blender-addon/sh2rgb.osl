@@ -1,0 +1,83 @@
+shader sh2rgb(
+    vector xyz = vector(0,0,0),
+    vector sh15 = vector(0,0,0),
+    vector sh14 = vector(0,0,0),
+    vector sh13 = vector(0,0,0),
+    vector sh12 = vector(0,0,0),
+    vector sh11 = vector(0,0,0),
+    vector sh10 = vector(0,0,0),
+    vector sh9 = vector(0,0,0),
+    vector sh8 = vector(0,0,0),
+    vector sh7 = vector(0,0,0),
+    vector sh6 = vector(0,0,0),
+    vector sh5 = vector(0,0,0),
+    vector sh4 = vector(0,0,0),
+    vector sh3 = vector(0,0,0),
+    vector sh2 = vector(0,0,0),
+    vector sh1 = vector(0,0,0),
+    vector sh0 = vector(0,0,0),
+    output vector result = vector(0,0,0)
+)
+{
+
+    float C0 = 0.28209479177387814;
+    float C1 = 0.4886025119029199;
+    float C2[5] = {
+        1.0925484305920792,
+        -1.0925484305920792,
+        0.31539156525252005,
+        -1.0925484305920792,
+        0.5462742152960396
+    };
+    float C3[7] = {
+        -0.5900435899266435,
+        2.890611442640554,
+        -0.4570457994644658,
+        0.3731763325901154,
+        -0.4570457994644658,
+        1.445305721320277,
+        -0.5900435899266435
+    };
+    float C4[9] = {
+        2.5033429417967046,
+        -1.7701307697799304,
+        0.9461746957575601,
+        -0.6690465435572892,
+        0.10578554691520431,
+        -0.6690465435572892,
+        0.47308734787878004,
+        -1.7701307697799304,
+        0.6258357354491761
+    };
+
+    float x = xyz[0];
+    float y = xyz[1];
+    float z = xyz[2];
+    float xx = x * x;
+    float yy = y * y;
+    float zz = z * z;
+    float xy = x * y;
+    float yz = y * z;
+    float xz = x * z;
+
+    result = C0 * sh0;
+
+    result -= C1 * y * sh1;
+    result += C1 * z * sh2;
+    result -= C1 * x * sh3;
+
+    result += C2[0] * xy * sh4;
+    result += C2[1] * yz * sh5;
+    result += C2[2] *(2.0 * zz - xx - yy) * sh6;
+    result += C2[3] * xz * sh7;
+    result += C2[4] * (xx - yy) * sh8;
+
+    result += C3[0] * y * (3.0 * xx - yy) * sh9;
+    result += C3[1] * xy * z * sh10;
+    result += C3[2] * y * (4 * zz - xx - yy) * sh11;
+    result += C3[3] * z * (2 * zz - 3 * xx - 3 * yy) * sh12;
+    result += C3[4] * x * (4 * zz - xx - yy) * sh13;
+    result += C3[5] * z * (xx - yy) * sh14;
+    result += C3[6] * x * (xx - 3 * yy) * sh15;
+    
+}
