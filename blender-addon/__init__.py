@@ -81,7 +81,8 @@ class ImportGaussianSplatting(bpy.types.Operator):
         features_extra = np.zeros((N, len(extra_f_names)))
         for idx, attr_name in enumerate(extra_f_names):
             features_extra[:, idx] = np.asarray(plydata.elements[0][attr_name])
-        features_extra = features_extra.reshape((N, 3, 15))
+        if features_extra.size > 0 :
+            features_extra = features_extra.reshape((N, 3, 15))
 
         log_scales = np.stack((np.asarray(plydata.elements[0]["scale_0"]),
                                np.asarray(plydata.elements[0]["scale_1"]),
@@ -134,7 +135,8 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
         for j in range(0, 15):
             sh_attr = mesh.attributes.new(name=f"sh{j + 1}", type='FLOAT_VECTOR', domain='POINT')
-            sh_attr.data.foreach_set("vector", features_extra[:, :, j].flatten())
+            if features_extra.size > 0 :
+                sh_attr.data.foreach_set("vector", features_extra[:, :, j].flatten())
 
         rot_quatxyz_attr = mesh.attributes.new(name="quatxyz", type='FLOAT_VECTOR', domain='POINT')
         rot_quatxyz_attr.data.foreach_set("vector", quats[:, :3].flatten())
@@ -962,12 +964,12 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
         geo_tree.links.new(
             is_point_cloud_node.outputs["Boolean"],
-            switch_node.inputs[1]
+            switch_node.inputs[0]
         )
 
         geo_tree.links.new(
             instance_node.outputs["Instances"],
-            switch_node.inputs[14]
+            switch_node.inputs[1]
         )
 
         geo_tree.links.new(
@@ -977,11 +979,11 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
         geo_tree.links.new(
             set_point_radius_node.outputs["Points"],
-            switch_node.inputs[15]
+            switch_node.inputs[2]
         )
 
         geo_tree.links.new(
-            switch_node.outputs[6],
+            switch_node.outputs[0],
             set_material_node.inputs["Geometry"]
         )
 
