@@ -1,0 +1,18 @@
+schema_version = "1.0.0"
+
+id = "gaussian_splatting_io"
+version = "0.0.1"
+name = "3D Gaussian Splatting"
+tagline = "3D Gaussian Splatting tool"
+maintainer = "Alexandre Carlier <alexandre.carlier01@gmail.com>"
+type="add-on"
+
+blender_version_min = "4.2.0"
+
+tags = ["Import-Export"]
+license = [
+  "SPDX:GPL-3.0-or-later",
+]
+
+[permissions]
+files = "Import/export PLY from/to disk"
