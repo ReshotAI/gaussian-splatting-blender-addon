@@ -147,7 +147,12 @@ class ImportGaussianSplatting(bpy.types.Operator):
         rot_euler_attr = mesh.attributes.new(name="rot_euler", type='FLOAT_VECTOR', domain='POINT')
         rot_euler_attr.data.foreach_set("vector", rots_euler.flatten())
 
-        obj = bpy.data.objects.new("GaussianSplatting", mesh)
+        # Name the object (and its mesh) after the imported file, falling back to
+        # a generic name if the path has no usable basename.
+        splat_name = bpy.path.display_name_from_filepath(self.filepath) or "GaussianSplatting"
+        mesh.name = splat_name
+
+        obj = bpy.data.objects.new(splat_name, mesh)
         bpy.context.collection.objects.link(obj)
         bpy.context.view_layer.objects.active = obj
         obj.select_set(True)
