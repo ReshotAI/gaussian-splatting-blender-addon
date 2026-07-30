@@ -36,12 +36,14 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
         start_time_0 = time.time()
 
-        bpy.context.scene.render.engine = 'CYCLES'
+        # The render engine is deliberately left untouched so importing a splat
+        # does not hijack the scene's current renderer. Cycles-specific settings
+        # are still prepared in case the user switches to Cycles themselves.
+        if "cycles" in context.preferences.addons and hasattr(bpy.context.scene, "cycles"):
+            if context.preferences.addons["cycles"].preferences.has_active_device():
+                bpy.context.scene.cycles.device = 'GPU'
 
-        if context.preferences.addons["cycles"].preferences.has_active_device():
-            bpy.context.scene.cycles.device = 'GPU'
-
-        bpy.context.scene.cycles.transparent_max_bounces = 20
+            bpy.context.scene.cycles.transparent_max_bounces = 20
 
         RECOMMENDED_MAX_GAUSSIANS = 200_000
 
