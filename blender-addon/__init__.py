@@ -922,8 +922,16 @@ class ImportGaussianSplatting(bpy.types.Operator):
             maximum_node.inputs[0]
         )
 
+        # FunctionNodeRandomValue exposes one output socket per data_type. Older
+        # Blender kept all four sockets present (Boolean was index 3) and only
+        # enabled the matching one; Blender 5.2 only lists the enabled socket, so
+        # a hard-coded index is out of range. Select the boolean output directly.
+        random_bool_output = next(
+            (o for o in random_value_node.outputs if o.enabled),
+            random_value_node.outputs[-1]
+        )
         geo_tree.links.new(
-            random_value_node.outputs[3],
+            random_bool_output,
             maximum_node.inputs[1]
         )
 
