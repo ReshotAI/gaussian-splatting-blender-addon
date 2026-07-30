@@ -36,12 +36,14 @@ class ImportGaussianSplatting(bpy.types.Operator):
 
         start_time_0 = time.time()
 
-        bpy.context.scene.render.engine = 'CYCLES'
+        # The render engine is deliberately left untouched so importing a splat
+        # does not hijack the scene's current renderer. Cycles-specific settings
+        # are still prepared in case the user switches to Cycles themselves.
+        if "cycles" in context.preferences.addons and hasattr(bpy.context.scene, "cycles"):
+            if context.preferences.addons["cycles"].preferences.has_active_device():
+                bpy.context.scene.cycles.device = 'GPU'
 
-        if context.preferences.addons["cycles"].preferences.has_active_device():
-            bpy.context.scene.cycles.device = 'GPU'
-
-        bpy.context.scene.cycles.transparent_max_bounces = 20
+            bpy.context.scene.cycles.transparent_max_bounces = 20
 
         RECOMMENDED_MAX_GAUSSIANS = 200_000
 
@@ -147,7 +149,12 @@ class ImportGaussianSplatting(bpy.types.Operator):
         rot_euler_attr = mesh.attributes.new(name="rot_euler", type='FLOAT_VECTOR', domain='POINT')
         rot_euler_attr.data.foreach_set("vector", rots_euler.flatten())
 
-        obj = bpy.data.objects.new("GaussianSplatting", mesh)
+        # Name the object (and its mesh) after the imported file, falling back to
+        # a generic name if the path has no usable basename.
+        splat_name = bpy.path.display_name_from_filepath(self.filepath) or "GaussianSplatting"
+        mesh.name = splat_name
+
+        obj = bpy.data.objects.new(splat_name, mesh)
         bpy.context.collection.objects.link(obj)
         bpy.context.view_layer.objects.active = obj
         obj.select_set(True)
@@ -922,8 +929,16 @@ class ImportGaussianSplatting(bpy.types.Operator):
             maximum_node.inputs[0]
         )
 
+        # FunctionNodeRandomValue exposes one output socket per data_type. Older
+        # Blender kept all four sockets present (Boolean was index 3) and only
+        # enabled the matching one; Blender 5.2 only lists the enabled socket, so
+        # a hard-coded index is out of range. Select the boolean output directly.
+        random_bool_output = next(
+            (o for o in random_value_node.outputs if o.enabled),
+            random_value_node.outputs[-1]
+        )
         geo_tree.links.new(
-            random_value_node.outputs[3],
+            random_bool_output,
             maximum_node.inputs[1]
         )
 
